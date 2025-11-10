@@ -1,0 +1,212 @@
+/* ==========================================
+   PAGE D'ACCUEIL
+   ========================================== */
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 50%, var(--bg-dark) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Effet de fond animé */
+.container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 51, 102, 0.1) 0%, transparent 70%);
+  animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Hero section */
+.hero {
+  text-align: center;
+  margin-bottom: 4rem;
+  z-index: 1;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.title {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 4rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Grille de boutons */
+.buttonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  max-width: 1000px;
+  width: 100%;
+  z-index: 1;
+}
+
+.btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  padding: 2.5rem 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  animation: slideUp 0.6s ease-out;
+}
+
+.btn:hover {
+  transform: translateY(-8px);
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(255, 51, 102, 0.3);
+}
+
+.btn:active {
+  transform: translateY(-4px);
+}
+
+.btnIcon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 0 20px rgba(255, 51, 102, 0.5));
+}
+
+.btnTitle {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.btnDesc {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Variantes de boutons */
+.btnHost {
+  animation-delay: 0.1s;
+}
+
+.btnHost:hover {
+  border-color: var(--primary);
+  box-shadow: 0 20px 40px rgba(255, 51, 102, 0.4);
+}
+
+.btnDisplay {
+  animation-delay: 0.2s;
+}
+
+.btnDisplay:hover {
+  border-color: var(--secondary);
+  box-shadow: 0 20px 40px rgba(0, 217, 255, 0.4);
+}
+
+.btnPlayer {
+  animation-delay: 0.3s;
+}
+
+.btnPlayer:hover {
+  border-color: var(--accent);
+  box-shadow: 0 20px 40px rgba(255, 215, 0, 0.4);
+}
+
+/* Footer */
+.footer {
+  margin-top: 4rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  z-index: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .title {
+    font-size: 3rem;
+  }
+
+  .subtitle {
+    font-size: 1.25rem;
+  }
+
+  .buttonGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .btn {
+    padding: 2rem 1.5rem;
+  }
+
+  .btnIcon {
+    font-size: 3rem;
+  }
+
+  .btnTitle {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 2.5rem;
+  }
+
+  .container {
+    padding: 1rem;
+  }
+}

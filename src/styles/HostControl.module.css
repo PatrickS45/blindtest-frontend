@@ -1,0 +1,501 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0A0E27 0%, #1A1F3A 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  background: #1A1F3A;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid #FF3366;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.logo {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.roomBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #FF3366;
+  background: #0A0E27;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+.headerStatus {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #B4B8D4;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00FF88;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Main content */
+.mainContent {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  padding-bottom: 100px;
+}
+
+/* Section cards */
+.sectionCard {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sectionTitle {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Game status */
+.gameStatus {
+  background: linear-gradient(135deg, rgba(255, 51, 102, 0.2) 0%, rgba(0, 217, 255, 0.2) 100%);
+  border: 2px solid #FF3366;
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.statusBox {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  text-align: center;
+}
+
+.statusBoxLabel {
+  font-size: 0.75rem;
+  color: #B4B8D4;
+  margin-bottom: 0.5rem;
+}
+
+.statusBoxValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Playlist section */
+.playlistInput {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.input {
+  flex: 1;
+  padding: 1rem;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  color: white;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #00D9FF;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.playlistLoadBtn {
+  padding: 1rem 1.5rem;
+  background: #00D9FF;
+  color: #0A0E27;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playlistLoadBtn:active {
+  transform: scale(0.95);
+}
+
+.playlistInfo {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: #B4B8D4;
+  line-height: 1.6;
+}
+
+.playlistInfo strong {
+  color: white;
+  font-size: 1rem;
+}
+
+/* Current track */
+.currentTrack {
+  background: rgba(255, 215, 0, 0.1);
+  border: 2px solid #FFD700;
+}
+
+.trackInfo {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.trackCover {
+  width: 80px;
+  height: 80px;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #FF3366 0%, #00D9FF 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.trackDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.trackTitle {
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-bottom: 0.25rem;
+}
+
+.trackArtist {
+  color: #B4B8D4;
+  font-size: 0.875rem;
+}
+
+.audioControls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.skipBtn {
+  flex: 1;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skipBtn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Buzzer alert */
+.buzzerAlert {
+  background: linear-gradient(135deg, rgba(255, 51, 102, 0.3) 0%, rgba(255, 51, 102, 0.1) 100%);
+  border: 3px solid #FF3366;
+  animation: buzzPulse 0.8s ease-out infinite;
+}
+
+@keyframes buzzPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255, 51, 102, 0); }
+}
+
+.buzzerPlayerCard {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.buzzerAvatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF3366 0%, #00D9FF 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.buzzerPlayerInfo {
+  flex: 1;
+}
+
+.buzzerPlayerName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.buzzerTime {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  color: #B4B8D4;
+}
+
+/* NOUVELLE SECTION: Affichage du titre */
+.answerSection {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  border: 2px solid #FFD700;
+}
+
+.answerLabel {
+  font-size: 0.875rem;
+  color: #FFD700;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.answerTrack {
+  text-align: center;
+}
+
+.answerTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.answerArtist {
+  font-size: 1.125rem;
+  color: #B4B8D4;
+}
+
+.validationButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.btnValidate {
+  padding: 1.25rem;
+  border: none;
+  border-radius: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btnValidate:active {
+  transform: scale(0.95);
+}
+
+.btnCorrect {
+  background: #00FF88;
+  color: #0A0E27;
+}
+
+.btnWrong {
+  background: #FF0044;
+  color: white;
+}
+
+.helpText {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #B4B8D4;
+  font-style: italic;
+}
+
+/* Players list */
+.playerMiniList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playerMiniItem {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.playerColorDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.playerMiniName {
+  flex: 1;
+  font-weight: 600;
+}
+
+.playerMiniScore {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #FFD700;
+}
+
+.emptyPlayers {
+  color: #6B7280;
+  text-align: center;
+  padding: 1rem;
+  font-style: italic;
+}
+
+/* Quick actions */
+.quickActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.quickActionBtn {
+  padding: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quickActionBtn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.quickActionIcon {
+  font-size: 1.5rem;
+}
+
+/* Bottom actions */
+.bottomActions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1A1F3A;
+  border-top: 2px solid #FF3366;
+  padding: 1rem 1.5rem;
+  z-index: 100;
+}
+
+.mainActionBtn {
+  width: 100%;
+  padding: 1.25rem;
+  border: none;
+  border-radius: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.mainActionBtn:active {
+  transform: scale(0.98);
+}
+
+.btnLaunch {
+  background: linear-gradient(135deg, #FF3366 0%, #FF6699 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(255, 51, 102, 0.4);
+}
+
+.btnWarning {
+  background: linear-gradient(135deg, #FFAA00 0%, #FF6699 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(255, 170, 0, 0.4);
+}
+
+.waitingMessage {
+  text-align: center;
+  padding: 1rem;
+  color: #B4B8D4;
+  font-size: 1.125rem;
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}

@@ -1,0 +1,449 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0A0E27 0%, #1A1F3A 100%);
+  color: white;
+  overflow: hidden;
+}
+
+/* Écran de connexion */
+.connectScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+}
+
+.connectScreen h1 {
+  font-size: 4rem;
+  margin: 0;
+  font-family: 'Fredoka', sans-serif;
+}
+
+.connectScreen p {
+  font-size: 1.5rem;
+  color: #B4B8D4;
+  margin: 0;
+}
+
+.codeInput {
+  width: 300px;
+  padding: 1.5rem;
+  font-size: 2.5rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  color: white;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.codeInput:focus {
+  outline: none;
+  border-color: #FF3366;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.connectButton {
+  padding: 1.5rem 3rem;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #FF3366 0%, #FF6699 100%);
+  color: white;
+  border: none;
+  border-radius: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.connectButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 40px rgba(255, 51, 102, 0.4);
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 3rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 2px solid #FF3366;
+}
+
+.logo {
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: 'Fredoka', sans-serif;
+}
+
+.roomCode {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #FF3366;
+  letter-spacing: 0.2em;
+  background: rgba(255, 51, 102, 0.1);
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.75rem;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  color: #B4B8D4;
+}
+
+.statusDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00FF88;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Layout principal */
+.mainLayout {
+  display: flex;
+  height: calc(100vh - 100px);
+}
+
+.mainZone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.sidebar {
+  width: 400px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.75rem;
+  text-align: center;
+}
+
+/* États du jeu */
+.waitingState,
+.playingState,
+.buzzedState,
+.resultState {
+  text-align: center;
+  width: 100%;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.waitingState h1,
+.playingState h1,
+.buzzedState h1,
+.resultState h1 {
+  font-size: 4rem;
+  margin: 0 0 2rem 0;
+  font-family: 'Fredoka', sans-serif;
+}
+
+/* QR Section */
+.qrSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.qrSection p {
+  font-size: 1.75rem;
+  color: #B4B8D4;
+  margin: 0;
+}
+
+.qrCode {
+  background: white;
+  padding: 2rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.urlText {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  color: #6B7280;
+}
+
+/* Visualiseur audio */
+.audioVisualizer {
+  margin: 3rem 0;
+}
+
+.soundWaves {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  height: 200px;
+}
+
+.wave {
+  width: 12px;
+  background: linear-gradient(135deg, #FF3366 0%, #00D9FF 100%);
+  border-radius: 6px;
+  animation: wave 0.8s ease-in-out infinite;
+}
+
+.wave:nth-child(2n) { animation-delay: 0.1s; }
+.wave:nth-child(3n) { animation-delay: 0.2s; }
+.wave:nth-child(4n) { animation-delay: 0.3s; }
+
+@keyframes wave {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+
+.instruction {
+  font-size: 2rem;
+  color: #B4B8D4;
+  margin: 2rem 0 0 0;
+}
+
+/* Joueur qui a buzzé */
+.buzzedPlayer {
+  animation: buzzAnimation 0.6s ease-out;
+}
+
+@keyframes buzzAnimation {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.playerAvatar {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.buzzedPlayer h2 {
+  font-size: 3.5rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.buzzedPlayer p {
+  font-size: 2rem;
+  color: #B4B8D4;
+  margin: 0;
+}
+
+/* Résultat */
+.resultState {
+  animation: resultAnimation 0.5s ease-out;
+}
+
+@keyframes resultAnimation {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.resultState.correct h1 {
+  color: #00FF88;
+  text-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
+}
+
+.resultState.wrong h1 {
+  color: #FF0044;
+  text-shadow: 0 0 40px rgba(255, 0, 68, 0.6);
+}
+
+.trackReveal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.trackCover {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #FF3366 0%, #00D9FF 100%);
+  border-radius: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.trackInfo {
+  text-align: left;
+}
+
+.trackInfo h2 {
+  font-size: 3rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.trackInfo p {
+  font-size: 2rem;
+  color: #B4B8D4;
+  margin: 0;
+}
+
+.scoreUpdate {
+  margin-top: 2rem;
+  font-size: 2.5rem;
+  color: #FFD700;
+}
+
+.scoreUpdate strong {
+  color: white;
+}
+
+/* Liste des joueurs */
+.playerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.playerItem {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.playerItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(5px);
+}
+
+.playerItem.first {
+  background: rgba(255, 215, 0, 0.2);
+  border: 2px solid #FFD700;
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+}
+
+.rank {
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.playerName {
+  font-size: 1.25rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playerScore {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #FFD700;
+  text-align: right;
+}
+
+@media (max-width: 1200px) {
+  .mainLayout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 300px;
+  }
+}
+/* ==========================================
+   TIMER DISPLAY (grand écran) - À ajouter dans Display.module.css
+   ========================================== */
+
+.answerTimerBig {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 3rem 0;
+  animation: pulseDisplay 1s ease-in-out infinite;
+}
+
+.timerCircleBig {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, #FFB700 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 60px rgba(255, 215, 0, 0.8);
+  border: 6px solid rgba(255, 255, 255, 0.3);
+}
+
+.timerValueBig {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6rem;
+  font-weight: 700;
+  color: var(--bg-dark);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.timerLabelBig {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@keyframes pulseDisplay {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Style pour le message de timeout */
+.resultState.wrong {
+  background: linear-gradient(135deg, rgba(255, 0, 68, 0.2) 0%, rgba(204, 0, 34, 0.1) 100%);
+}
+
+.resultState.correct {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 204, 109, 0.1) 100%);
+}

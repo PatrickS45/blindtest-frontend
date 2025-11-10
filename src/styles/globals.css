@@ -1,0 +1,110 @@
+/* ==========================================
+   VARIABLES GLOBALES
+   ========================================== */
+
+:root {
+  /* Couleurs principales */
+  --primary: #FF3366;
+  --primary-dark: #CC0044;
+  --secondary: #00D9FF;
+  --accent: #FFD700;
+
+  /* États */
+  --success: #00FF88;
+  --error: #FF0044;
+
+  /* Backgrounds */
+  --bg-dark: #0A0E27;
+  --bg-medium: #1A1F3A;
+  --bg-light: #2D3250;
+
+  /* Textes */
+  --text-primary: #FFFFFF;
+  --text-secondary: #B4B8D4;
+}
+
+/* ==========================================
+   RESET & BASE
+   ========================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-medium) 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  touch-action: manipulation;
+}
+
+/* ==========================================
+   ANIMATIONS GLOBALES
+   ========================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(255, 51, 102, 0);
+  }
+}
+
+@keyframes buzzEffect {
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 40px rgba(255, 51, 102, 0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ==========================================
+   IMPORTS DE POLICES (optionnel)
+   ========================================== */
+
+/* Si tu utilises Google Fonts, ajoute ça en haut du fichier ou dans ton _document.js :
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@600;700&display=swap');
+*/

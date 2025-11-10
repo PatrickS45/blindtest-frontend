@@ -1,0 +1,277 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0A0E27 0%, #1A1F3A 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: #1A1F3A;
+  padding: 1rem 1.5rem;
+  border-bottom: 2px solid #FF3366;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.backButton:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.title {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.mainContent {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  padding-bottom: 100px;
+}
+
+.section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  margin: 0 0 1.5rem 0;
+}
+
+/* Mode cards */
+.optionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modeCard {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modeCard:active {
+  transform: scale(0.98);
+}
+
+.modeCardActive {
+  border-color: #FF3366;
+  background: rgba(255, 51, 102, 0.15);
+  box-shadow: 0 0 20px rgba(255, 51, 102, 0.3);
+}
+
+.radioHidden {
+  display: none;
+}
+
+.modeIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.modeTitle {
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-bottom: 0.25rem;
+}
+
+.modeDescription {
+  font-size: 0.875rem;
+  color: #B4B8D4;
+  line-height: 1.4;
+}
+
+/* Settings */
+.settingItem {
+  margin-bottom: 2rem;
+}
+
+.settingLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.settingValue {
+  font-family: 'JetBrains Mono', monospace;
+  color: #FF3366;
+  font-size: 1.125rem;
+}
+
+.slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF3366 0%, #FF6699 100%);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 51, 102, 0.4);
+}
+
+.slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF3366 0%, #FF6699 100%);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 51, 102, 0.4);
+}
+
+.sliderMarkers {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6B7280;
+}
+
+/* Checkbox */
+.checkboxItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.checkboxItem:active {
+  transform: scale(0.98);
+}
+
+.checkbox {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.checkboxLabel {
+  flex: 1;
+}
+
+.checkboxTitle {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.checkboxDescription {
+  font-size: 0.875rem;
+  color: #B4B8D4;
+}
+
+/* Summary */
+.summary {
+  background: linear-gradient(135deg, rgba(255, 51, 102, 0.15) 0%, rgba(0, 217, 255, 0.15) 100%);
+  border: 2px solid #FF3366;
+}
+
+.summaryList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.summaryList li {
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: #B4B8D4;
+}
+
+.summaryList strong {
+  color: white;
+}
+
+/* Footer */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1A1F3A;
+  border-top: 2px solid #FF3366;
+  padding: 1rem 1.5rem;
+}
+
+.createButton {
+  width: 100%;
+  padding: 1.25rem;
+  border: none;
+  border-radius: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00FF88 0%, #00D9FF 100%);
+  color: #0A0E27;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.4);
+}
+
+.createButton:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 600px) {
+  .optionsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modeCard {
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
