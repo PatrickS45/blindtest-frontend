@@ -45,7 +45,9 @@ export default function Display() {
   const { code } = router.query;
 
   const [socket, setSocket] = useState(null);
-  const [roomCode, setRoomCode] = useState(code || '');
+  const [roomCode, setRoomCode] = useState(
+    typeof code === 'string' ? code : (Array.isArray(code) ? code[0] : '') || ''
+  );
   const [connected, setConnected] = useState(false);
   const [gameState, setGameState] = useState('waiting'); // waiting, playing, buzzed, result
   const [players, setPlayers] = useState([]);
@@ -203,7 +205,8 @@ export default function Display() {
 
   const handleConnect = () => {
     if (roomCode) {
-      router.push('/display?code=' + roomCode.toUpperCase());
+      const codeStr = typeof roomCode === 'string' ? roomCode : roomCode[0] || '';
+      router.push('/display?code=' + codeStr.toUpperCase());
     }
   };
 

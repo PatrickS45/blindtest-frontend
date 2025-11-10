@@ -44,7 +44,9 @@ export default function Player() {
   const { code } = router.query;
 
   const [socket, setSocket] = useState(null);
-  const [roomCode, setRoomCode] = useState(code || '');
+  const [roomCode, setRoomCode] = useState(
+    typeof code === 'string' ? code : (Array.isArray(code) ? code[0] : '') || ''
+  );
   const [playerName, setPlayerName] = useState('');
   const [joined, setJoined] = useState(false);
   const [gameStatus, setGameStatus] = useState('waiting');
@@ -58,7 +60,8 @@ export default function Player() {
 
   useEffect(() => {
     if (code) {
-      setRoomCode(code);
+      const codeStr = typeof code === 'string' ? code : (Array.isArray(code) ? code[0] : '');
+      setRoomCode(codeStr);
     }
   }, [code]);
 
