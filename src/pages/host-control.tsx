@@ -7,7 +7,10 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
 
 export default function HostControl() {
   const router = useRouter();
-  const { roomCode: urlRoomCode } = router.query;
+  const { roomCode: queryRoomCode } = router.query;
+  
+  // ✅ Convertir en string pour éviter l'erreur TypeScript
+  const urlRoomCode = typeof queryRoomCode === 'string' ? queryRoomCode : (Array.isArray(queryRoomCode) ? queryRoomCode[0] : '');
 
   const [socket, setSocket] = useState(null);
   const [roomCode, setRoomCode] = useState('');
