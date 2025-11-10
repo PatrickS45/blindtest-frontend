@@ -58,8 +58,9 @@ export default function Display() {
 
   useEffect(() => {
     if (code && !socket) {
-      setRoomCode(code);
-      connectToRoom(code);
+      const codeStr = typeof code === 'string' ? code : (Array.isArray(code) ? code[0] : '');
+      setRoomCode(codeStr);
+      connectToRoom(codeStr);
     }
   }, [code]);
 
