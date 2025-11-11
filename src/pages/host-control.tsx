@@ -51,15 +51,13 @@ export default function HostControl() {
       ? queryRoomCode
       : (Array.isArray(queryRoomCode) ? queryRoomCode[0] || '' : '');
 
+    const newSocket = io(SOCKET_URL);
+    setSocket(newSocket);
+
     if (roomCodeFromUrl) {
-      const newSocket = io(SOCKET_URL);
-      setSocket(newSocket);
       setRoomCode(roomCodeFromUrl);
       setGameStatus('waiting');
     } else {
-      const newSocket = io(SOCKET_URL);
-      setSocket(newSocket);
-
       newSocket.emit('create_game', (response: any) => {
         if (response.success) {
           setRoomCode(response.roomCode);
@@ -69,11 +67,9 @@ export default function HostControl() {
     }
 
     return () => {
-      if (socket) {
-        socket.disconnect();
-      }
+      newSocket.disconnect();
     };
-  }, [queryRoomCode, socket]);
+  }, [queryRoomCode]);
 
   useEffect(() => {
     if (!socket) return;
