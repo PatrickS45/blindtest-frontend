@@ -1,30 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import styles from '../styles/HostControl.module.css';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
+interface Player {
+  name: string;
+  score: number;
+}
+
+interface Playlist {
+  title: string;
+  trackCount: number;
+}
+
+interface TrackData {
+  title: string;
+  artist: string;
+  previewUrl: string;
+  duration: number;
+}
+
+interface BuzzedPlayer {
+  playerName: string;
+}
+
 export default function HostControl() {
   const router = useRouter();
   const { roomCode: queryRoomCode } = router.query;
-    // ✅ Convertir en string pour éviter l'erreur TypeScript
-  const urlRoomCode = typeof queryRoomCode === 'string' ? queryRoomCode : (Array.isArray(queryRoomCode) ? queryRoomCode[0] : '');
 
-  const [socket, setSocket] = useState(null);
-  const [roomCode, setRoomCode] = useState('');
-  const [players, setPlayers] = useState([]);
-  const [playlistId, setPlaylistId] = useState('');
-  const [playlist, setPlaylist] = useState(null);
-  const [gameStatus, setGameStatus] = useState('setup');
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [buzzedPlayer, setBuzzedPlayer] = useState(null);
-  const [roundNumber, setRoundNumber] = useState(0);
-  const [totalRounds] = useState(10);
-  const [gameDuration, setGameDuration] = useState(0);
+  // ✅ Convertir en string pour éviter l'erreur TypeScript
+  const urlRoomCode = typeof queryRoomCode === 'string'
+    ? queryRoomCode
+    : (Array.isArray(queryRoomCode) ? queryRoomCode[0] : '');
+
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [roomCode, setRoomCode] = useState<string>('');
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [playlistId, setPlaylistId] = useState<string>('');
+  const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [gameStatus, setGameStatus] = useState<string>('setup');
+  const [currentTrack, setCurrentTrack] = useState<TrackData | null>(null);
+  const [buzzedPlayer, setBuzzedPlayer] = useState<BuzzedPlayer | null>(null);
+  const [roundNumber, setRoundNumber] = useState<number>(0);
+  const [totalRounds] = useState<number>(10);
+  const [gameDuration, setGameDuration] = useState<number>(0);
 
   // ✅ Utiliser useRef pour l'audio
-  const audioRef = useRef(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (urlRoomCode) {
@@ -36,34 +60,40 @@ export default function HostControl() {
       const newSocket = io(SOCKET_URL);
       setSocket(newSocket);
 
-      newSocket.emit('create_game', (response) => {
+      newSocket.emit('create_game', (response: any) => {
         if (response.success) {
           setRoomCode(response.roomCode);
           setGameStatus('waiting');
         }
       });
     }
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
   }, [urlRoomCode]);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('player_joined', (data) => {
+    socket.on('player_joined', (data: any) => {
       setPlayers(data.players);
     });
 
-    socket.on('player_left', (data) => {
+    socket.on('player_left', (data: any) => {
       setPlayers(data.players);
     });
 
-    socket.on('play_track', (data) => {
+    socket.on('play_track', (data: TrackData) => {
       setCurrentTrack(data);
       setGameStatus('playing');
       setRoundNumber(prev => prev + 1);
 
       // ✅ Jouer l'audio et stocker dans la ref
       const audio = new Audio(data.previewUrl);
-      audio.play();
+      audio.play().catch(err => console.error('Erreur lecture audio:', err));
       audioRef.current = audio;
 
       // Auto-pause après 30 secondes
@@ -74,7 +104,7 @@ export default function HostControl() {
       }, data.duration * 1000);
     });
 
-    socket.on('buzz_locked', (data) => {
+    socket.on('buzz_locked', (data: BuzzedPlayer) => {
       setBuzzedPlayer(data);
       setGameStatus('buzzed');
 
@@ -89,12 +119,12 @@ export default function HostControl() {
     socket.on('resume_audio', () => {
       console.log('▶️ Reprise audio demandée');
       if (audioRef.current) {
-        audioRef.current.play();
+        audioRef.current.play().catch(err => console.error('Erreur reprise audio:', err));
         console.log('✅ Audio relancé');
       }
     });
 
-    socket.on('round_result', (data) => {
+    socket.on('round_result', (data: any) => {
       setPlayers(data.leaderboard);
       setBuzzedPlayer(null);
       setCurrentTrack(null);
@@ -124,7 +154,7 @@ export default function HostControl() {
     return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -133,7 +163,7 @@ export default function HostControl() {
   const handleLoadPlaylist = () => {
     if (!playlistId || !socket) return;
 
-    socket.emit('load_playlist', { roomCode, playlistId }, (response) => {
+    socket.emit('load_playlist', { roomCode, playlistId }, (response: any) => {
       if (response.success) {
         setPlaylist(response.playlist);
       } else {
@@ -144,14 +174,14 @@ export default function HostControl() {
 
   const handleStartRound = () => {
     if (!socket || !playlist) return;
-    socket.emit('start_round', { roomCode }, (response) => {
+    socket.emit('start_round', { roomCode }, (response: any) => {
       if (!response.success) {
         alert('Erreur : ' + response.error);
       }
     });
   };
 
-  const handleValidateAnswer = (isCorrect) => {
+  const handleValidateAnswer = (isCorrect: boolean) => {
     if (!socket) return;
 
     // Le serveur gère maintenant la reprise de l'audio après 2 secondes
