@@ -31,9 +31,11 @@ export default function HostControl() {
   const { roomCode: queryRoomCode } = router.query;
 
   // ✅ Convertir en string pour éviter l'erreur TypeScript
-  const urlRoomCode = typeof queryRoomCode === 'string'
-    ? queryRoomCode
-    : (Array.isArray(queryRoomCode) ? queryRoomCode[0] : '');
+  const urlRoomCode: string = (() => {
+     if (typeof queryRoomCode === 'string') return queryRoomCode;
+     if (Array.isArray(queryRoomCode)) return queryRoomCode[0] || '';
+     return '';
+   })();
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [roomCode, setRoomCode] = useState<string>('');
