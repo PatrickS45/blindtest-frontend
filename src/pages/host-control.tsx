@@ -30,13 +30,6 @@ export default function HostControl() {
   const router = useRouter();
   const { roomCode: queryRoomCode } = router.query;
 
-  // ✅ Convertir en string pour éviter l'erreur TypeScript
-  const urlRoomCode: string = (() => {
-     if (typeof queryRoomCode === 'string') return queryRoomCode;
-     if (Array.isArray(queryRoomCode)) return queryRoomCode[0] || '';
-     return '';
-   })();
-
   const [socket, setSocket] = useState<Socket | null>(null);
   const [roomCode, setRoomCode] = useState<string>('');
   const [players, setPlayers] = useState<Player[]>([]);
@@ -53,10 +46,15 @@ export default function HostControl() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (urlRoomCode) {
+    // ✅ Convertir queryRoomCode en string directement dans le useEffect
+    const roomCodeFromUrl: string = typeof queryRoomCode === 'string'
+      ? queryRoomCode
+      : (Array.isArray(queryRoomCode) ? queryRoomCode[0] || '' : '');
+
+    if (roomCodeFromUrl) {
       const newSocket = io(SOCKET_URL);
       setSocket(newSocket);
-      setRoomCode(urlRoomCode);
+      setRoomCode(roomCodeFromUrl);
       setGameStatus('waiting');
     } else {
       const newSocket = io(SOCKET_URL);
@@ -75,7 +73,7 @@ export default function HostControl() {
         socket.disconnect();
       }
     };
-  }, [urlRoomCode]);
+  }, [queryRoomCode, socket]);
 
   useEffect(() => {
     if (!socket) return;
