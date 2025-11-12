@@ -228,10 +228,12 @@ export default function Player() {
   // ✅ FONCTION POUR JOUER LE SON DU BUZZER
   const playBuzzerSound = (soundNumber) => {
     try {
-      const audio = new Audio(`/sounds/buzzer-${soundNumber}.mp3`);
+      // 🆕 CORRECTION : Chemin corrigé vers public/sounds/
+      const audio = new Audio(`/sounds/buzzer_${soundNumber}.mp3`);
       audio.volume = 0.8;
       audio.play().catch(err => {
         console.error('Erreur lecture son buzzer:', err);
+        console.error('Chemin tenté:', `/sounds/buzzer_${soundNumber}.mp3`);
       });
     } catch (error) {
       console.error('Erreur chargement son buzzer:', error);
@@ -308,19 +310,24 @@ export default function Player() {
             </p>
 
             {lastResult && (
-              <div className={`${styles.resultCard} ${lastResult.isCorrect ? styles.resultCorrect : styles.resultWrong}`}>
+              <div className={`${styles.resultCard} ${lastResult.correct ? styles.resultCorrect : styles.resultWrong}`}>
                 <div className={styles.resultTitle}>
-                  {lastResult.isCorrect ? '✅ Bonne réponse !' : '❌ Mauvaise réponse'}
-                  {lastResult.isTimeout && ' (Temps écoulé)'}
+                  {lastResult.correct ? '✅ Bonne réponse !' : '❌ Mauvaise réponse'}
                 </div>
                 <div className={styles.trackReveal}>
-                  <div className={styles.trackName}>{lastResult.correctAnswer.title}</div>
-                  <div className={styles.trackArtist}>{lastResult.correctAnswer.artist}</div>
+                  <div className={styles.trackName}>{lastResult.answer}</div>
                 </div>
                 <div className={styles.resultPlayer}>
-                  Par <strong>{lastResult.playerName}</strong>
-                  {lastResult.points > 0 ? ' +' : ' '}
-                  {lastResult.points} pts
+                  {lastResult.player && (
+                    <>
+                      Par <strong>{lastResult.player.name}</strong>
+                      {lastResult.points > 0 ? ' +' : ' '}
+                      {lastResult.points} pts
+                    </>
+                  )}
+                  {!lastResult.player && lastResult.message && (
+                    <>{lastResult.message}</>
+                  )}
                 </div>
               </div>
             )}
