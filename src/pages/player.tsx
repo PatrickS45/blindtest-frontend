@@ -228,7 +228,7 @@ export default function Player() {
   // ✅ FONCTION POUR JOUER LE SON DU BUZZER
   const playBuzzerSound = (soundNumber) => {
     try {
-      // 🆕 CORRECTION : Chemin corrigé vers public/sounds/
+      // 🆕 CORRECTION: Utiliser buzzer_1.mp3 (underscore)
       const audio = new Audio(`/sounds/buzzer_${soundNumber}.mp3`);
       audio.volume = 0.8;
       audio.play().catch(err => {
