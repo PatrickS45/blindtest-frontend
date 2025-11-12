@@ -432,7 +432,9 @@
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0.5; }
 }
-rgba(204, 0, 34, 0.1) 100%);
+/* Style pour le message de timeout */
+.resultState.wrong {
+  background: linear-gradient(135deg, rgba(255, 0, 68, 0.2) 0%, rgba(204, 0, 34, 0.1) 100%);
 }
 
 .resultState.correct {
