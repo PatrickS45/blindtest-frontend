@@ -95,6 +95,7 @@ export default function Player() {
 
       newSocket.emit('join_game', { roomCode: roomCode.toUpperCase(), playerName }, (response) => {
         console.log('📥 Réponse join_game:', response);
+        console.log('🔊 Buzzer son:', response.buzzerSound);
 
         if (response.success) {
           console.log('✅ Rejoint avec succès !');
