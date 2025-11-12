@@ -32,7 +32,7 @@ export default function Display() {
     }
   }, [roomFromUrl]);
 
-  const handleConnect = (code) => {
+  const handleConnect = (code?: string) => {
     const finalCode = code || roomCode;
 
     if (!finalCode || finalCode.length !== 4) {
