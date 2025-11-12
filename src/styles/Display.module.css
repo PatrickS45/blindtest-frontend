@@ -365,10 +365,72 @@
   text-align: center;
 }
 
-.playerName {
-  font-size: 1.25rem;
-  font-weight: 600;
-  white-space: nowr
+.playerScore {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #FFD700;
+  text-align: right;
+}
+
+@media (max-width: 1200px) {
+  .mainLayout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 300px;
+  }
+}
+
+/* ==========================================
+   TIMER DISPLAY (grand écran) - À ajouter dans Display.module.css
+   ========================================== */
+
+.answerTimerBig {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 3rem 0;
+  animation: pulseDisplay 1s ease-in-out infinite;
+}
+
+.timerCircleBig {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 60px rgba(76, 175, 80, 0.8);
+  border: 6px solid rgba(255, 255, 255, 0.3);
+}
+
+.timerValueBig {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6rem;
+  font-weight: 700;
+  color: #0A0E27;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.timerLabelBig {
+  font-size: 1.5rem;
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@keyframes pulseDisplay {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
 /* ==========================================
    AJOUTS POUR TIMER AMÉLIORÉ + BARRE PROGRESSION
    ========================================== */
