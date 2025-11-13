@@ -126,7 +126,7 @@ export default function Player() {
 
             // ✅ JOUER LE SON DU BUZZER (seulement si c'est MOI qui ai buzzé)
             if (data.playerName === playerName) {
-              playBuzzerSound(data.buzzerSound);
+              playBuzzerSound(myBuzzerSound);
             }
           });
 
