@@ -55,6 +55,7 @@ export default function Player() {
   const [lastResult, setLastResult] = useState(null);
   const [myScore, setMyScore] = useState(0);
   const [myBuzzerSound, setMyBuzzerSound] = useState(null);
+  const myBuzzerSoundRef = useRef(null); // 🆕 Ajoute un ref
   const [roundNumber, setRoundNumber] = useState(0);
   const [answerTimer, setAnswerTimer] = useState(0); // Timer 8 secondes
 
@@ -104,6 +105,7 @@ export default function Player() {
           setJoined(true);
           setSocket(newSocket);
           setMyBuzzerSound(response.buzzerSound);
+          myBuzzerSoundRef.current = response.buzzerSound; // 🆕 Stocke aussi dans ref
 
           newSocket.on('round_started', (data) => {
             console.log('🎵 Manche démarrée !', data);
@@ -124,11 +126,12 @@ export default function Player() {
             // ✅ Démarrer le timer de 8 secondes
             setAnswerTimer(8);
 
-            // ✅ JOUER LE SON DU BUZZER (seulement si c'est MOI qui ai buzzé)
-            if (data.playerName === playerName) {
-              playBuzzerSound(myBuzzerSound);
-            }
-          });
+                    // ✅ CORRECTION : Utiliser la ref
+           if (data.playerName === playerName && myBuzzerSoundRef.current) {
+             console.log('🔊 Jouer buzzer #' + myBuzzerSoundRef.current);
+             playBuzzerSound(myBuzzerSoundRef.current);
+           }
+         });
 
           // ✅ Événement timeout_warning
           newSocket.on('timeout_warning', (data) => {
