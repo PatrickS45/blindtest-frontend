@@ -148,16 +148,17 @@ export default function Player() {
             setBuzzedPlayer('');
             setAnswerTimer(0);
 
-            // ✅ JOUER LE SON si c'est moi qui ai buzzé
-            if (data.playerName === playerName) {
-              playFeedbackSound(data.isCorrect, data.isTimeout);
-            }
+            // ✅ CORRECTION : Utiliser data.player.name
+  if (data.player && data.player.name === playerName) {
+    console.log('🔊 Je joue le son feedback');
+    playFeedbackSound(data.correct, false);  // data.correct pas data.isCorrect
+  }
 
-            const myPlayer = data.leaderboard.find(p => p.name === playerName);
-            if (myPlayer) {
-              setMyScore(myPlayer.score);
-            }
-          });
+  const myPlayer = data.leaderboard.find(p => p.name === playerName);
+  if (myPlayer) {
+    setMyScore(myPlayer.score);
+  }
+});
 
           // ✅ ÉCOUTER wrong_answer_continue (mauvaise réponse, jeu continue)
           newSocket.on('wrong_answer_continue', (data) => {
