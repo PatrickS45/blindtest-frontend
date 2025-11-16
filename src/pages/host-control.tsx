@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+placeholder="ID Playlist Spotify (ex: 37i9dQZF1DXcBWIGoYBM5M)"import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { io, Socket } from 'socket.io-client';
 import styles from '../styles/HostControl.module.css';
@@ -250,7 +250,7 @@ export default function HostControl() {
             <div className={styles.playlistInput}>
               <input
                 type="text"
-                placeholder="ID Playlist Deezer"
+                placeholder="ID Playlist Spotify (ex: 37i9dQZF1DXcBWIGoYBM5M)"
                 value={playlistId}
                 onChange={(e) => setPlaylistId(e.target.value)}
                 className={styles.input}
@@ -258,6 +258,9 @@ export default function HostControl() {
               <button onClick={handleLoadPlaylist} className={styles.playlistLoadBtn}>
                 Charger
               </button>
+            </div>
+            <div className={styles.helpText}>
+              💡 L'ID se trouve dans l'URL Spotify : open.spotify.com/playlist/<strong>ID_ICI</strong>
             </div>
           </div>
         )}
