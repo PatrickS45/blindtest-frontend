@@ -1,4 +1,4 @@
-placeholder="ID Playlist Spotify (ex: 37i9dQZF1DXcBWIGoYBM5M)"import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { io, Socket } from 'socket.io-client';
 import styles from '../styles/HostControl.module.css';
