@@ -1,0 +1,288 @@
+'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import { useParams } from 'next/navigation'
+import { useSocket } from '@/hooks/useSocket'
+import { Leaderboard } from '@/components/ui/Leaderboard'
+import { Player } from '@/types/game'
+import { cn } from '@/lib/utils'
+
+interface BuzzedPlayer {
+  playerName: string
+  playerColor?: string
+}
+
+interface RoundResult {
+  correct: boolean
+  player?: { name: string }
+  answer: string
+  points?: number
+  message?: string
+}
+
+export default function DisplayTV() {
+  const params = useParams()
+  const roomCode = (params.roomCode as string).toUpperCase()
+  const { socket } = useSocket()
+
+  const [players, setPlayers] = useState<Player[]>([])
+  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'buzzed' | 'result'>('waiting')
+  const [buzzedPlayer, setBuzzedPlayer] = useState<BuzzedPlayer | null>(null)
+  const [result, setResult] = useState<RoundResult | null>(null)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const [timerDuration, setTimerDuration] = useState(10)
+
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Join as display
+  useEffect(() => {
+    if (!socket || !roomCode) return
+
+    console.log('📺 Display connecting to room:', roomCode)
+    socket.emit('join_game', {
+      roomCode,
+      playerName: `Display-${roomCode}`,
+    })
+  }, [socket, roomCode])
+
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket) return
+
+    socket.on('player_joined', (data: any) => setPlayers(data.players || []))
+    socket.on('player_left', (data: any) => setPlayers(data.players || []))
+
+    socket.on('play_track', (data: any) => {
+      setGameStatus('playing')
+      setBuzzedPlayer(null)
+      setResult(null)
+      setTimerDuration(data.timerDuration || 10)
+      setTimeLeft(data.timerDuration || 10)
+
+      // Play audio
+      if (audioRef.current) audioRef.current.pause()
+      const audio = new Audio(data.previewUrl)
+      audio.volume = data.volume || 0.7
+      audio.play().catch((err) => console.error('Audio error:', err))
+      audioRef.current = audio
+
+      // Start timer
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => (prev === null ? null : prev - 0.1))
+      }, 100)
+    })
+
+    socket.on('stop_music', () => {
+      if (audioRef.current) audioRef.current.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    })
+
+    socket.on('buzz_locked', (data: BuzzedPlayer) => {
+      setBuzzedPlayer(data)
+      setGameStatus('buzzed')
+      if (audioRef.current) audioRef.current.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    })
+
+    socket.on('round_result', (data: any) => {
+      setResult(data)
+      setGameStatus('result')
+      setBuzzedPlayer(null)
+      setPlayers(data.leaderboard || [])
+      setTimeLeft(null)
+      if (audioRef.current) audioRef.current.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      setTimeout(() => {
+        setGameStatus('waiting')
+        setResult(null)
+      }, 5000)
+    })
+
+    socket.on('round_skipped' as any, (data: any) => {
+      setResult({
+        correct: false,
+        answer: data.answer,
+        message: "Personne n'a trouvé !",
+      })
+      setGameStatus('result')
+      setPlayers(data.leaderboard || [])
+      setTimeLeft(null)
+      if (audioRef.current) audioRef.current.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      setTimeout(() => {
+        setGameStatus('waiting')
+        setResult(null)
+      }, 5000)
+    })
+
+    return () => {
+      socket.off('player_joined')
+      socket.off('player_left')
+      socket.off('play_track')
+      socket.off('stop_music')
+      socket.off('buzz_locked')
+      socket.off('round_result')
+      socket.off('round_skipped')
+    }
+  }, [socket])
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) audioRef.current.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    }
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden">
+      {/* Header */}
+      <header className="bg-bg-card/50 backdrop-blur-md border-b-2 border-primary/20 p-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="font-display text-4xl font-bold text-gradient-primary">🎵 BLIND TEST</div>
+          <div className="font-mono text-5xl font-bold bg-primary/20 px-8 py-3 rounded-2xl border-4 border-primary">
+            {roomCode}
+          </div>
+          <div className="flex items-center gap-2 text-success">
+            <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
+            <span className="font-semibold text-xl">En direct</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex h-[calc(100vh-120px)]">
+        {/* Main Zone */}
+        <div className="flex-1 flex items-center justify-center p-12">
+          {/* Waiting State */}
+          {gameStatus === 'waiting' && (
+            <div className="text-center animate-fade-in">
+              <div className="text-9xl mb-8 animate-bounce">🎵</div>
+              <h1 className="text-hero font-display font-bold mb-4">En attente...</h1>
+              <p className="text-title text-text-secondary">
+                {players.length} joueur{players.length > 1 ? 's' : ''} connecté
+                {players.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          )}
+
+          {/* Playing State */}
+          {gameStatus === 'playing' && (
+            <div className="text-center space-y-12 animate-fade-in">
+              {/* Timer */}
+              {timeLeft !== null && (
+                <div className="relative">
+                  {/* Circular Timer */}
+                  <div
+                    className={cn(
+                      'w-64 h-64 mx-auto rounded-full flex items-center justify-center text-8xl font-display font-bold border-8 transition-colors',
+                      timeLeft <= 3 && timeLeft > 0
+                        ? 'border-error text-error animate-pulse'
+                        : timeLeft <= 0
+                        ? 'border-warning text-warning'
+                        : 'border-primary text-primary'
+                    )}
+                  >
+                    {timeLeft > 0 ? Math.ceil(timeLeft) : '⏰'}
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-96 h-4 bg-bg-card rounded-full overflow-hidden mx-auto mt-8">
+                    <div
+                      className={cn(
+                        'h-full transition-all duration-100',
+                        timeLeft <= 3 ? 'bg-error' : 'bg-primary'
+                      )}
+                      style={{
+                        width: `${Math.max(0, (timeLeft / timerDuration) * 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  {timeLeft <= 0 && (
+                    <p className="mt-6 text-xl text-warning animate-pulse">
+                      ⚠️ Temps écoulé - Le MC décide
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Audio Visualizer */}
+              <div className="flex justify-center gap-2">
+                {[...Array(12)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-3 bg-primary rounded-full animate-pulse"
+                    style={{
+                      height: `${Math.random() * 80 + 40}px`,
+                      animationDelay: `${i * 0.1}s`,
+                    }}
+                  />
+                ))}
+              </div>
+
+              <p className="text-2xl text-text-secondary">Qui trouvera en premier ?</p>
+            </div>
+          )}
+
+          {/* Buzzed State */}
+          {gameStatus === 'buzzed' && buzzedPlayer && (
+            <div className="text-center animate-fade-in">
+              <div className="mb-8">
+                <div
+                  className="w-48 h-48 rounded-full mx-auto flex items-center justify-center text-8xl mb-6 animate-bounce"
+                  style={{ backgroundColor: buzzedPlayer.playerColor || '#FF3366' }}
+                >
+                  🎤
+                </div>
+                <h1 className="text-hero font-display font-bold mb-2">{buzzedPlayer.playerName}</h1>
+                <p className="text-title text-text-secondary">a buzzé !</p>
+              </div>
+            </div>
+          )}
+
+          {/* Result State */}
+          {gameStatus === 'result' && result && (
+            <div
+              className={cn(
+                'text-center animate-fade-in',
+                result.correct ? 'text-success' : 'text-error'
+              )}
+            >
+              <div className="text-9xl mb-6 animate-bounce">
+                {result.correct ? '🎉' : '😢'}
+              </div>
+              <h1 className="text-hero font-display font-bold mb-6">
+                {result.correct ? 'Bravo !' : 'Dommage !'}
+              </h1>
+
+              {result.correct && result.player && (
+                <div className="text-3xl mb-8">
+                  <strong>{result.player.name}</strong> gagne {result.points} points !
+                </div>
+              )}
+
+              <div className="bg-bg-card rounded-3xl p-12 inline-block">
+                <div className="text-8xl mb-6">🎵</div>
+                <h2 className="text-2xl text-text-secondary mb-4">La réponse était :</h2>
+                <p className="text-4xl font-display font-bold">{result.answer}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar - Leaderboard */}
+        <div className="w-96 bg-bg-card/50 backdrop-blur-md border-l-2 border-primary/20 p-6 overflow-y-auto">
+          <h3 className="font-display text-2xl font-bold mb-6 flex items-center gap-2">
+            <span>🏆</span>
+            <span>Classement</span>
+          </h3>
+          <Leaderboard players={players} />
+        </div>
+      </div>
+    </div>
+  )
+}
