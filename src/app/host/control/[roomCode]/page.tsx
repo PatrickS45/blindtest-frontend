@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { Button } from '@/components/ui/Button'
 import { Leaderboard } from '@/components/ui/Leaderboard'
-import { SpotifyAuth } from '@/components/auth/SpotifyAuth'
 import { Player } from '@/types/game'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +40,6 @@ export default function HostControl() {
   const [totalRounds] = useState<number>(10)
   const [gameDuration, setGameDuration] = useState<number>(0)
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -129,13 +127,6 @@ export default function HostControl() {
     }, 1000)
     return () => clearInterval(interval)
   }, [])
-
-  // Save return URL for OAuth redirect
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('spotify_auth_return_url', `/host/control/${roomCode}`)
-    }
-  }, [roomCode])
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
@@ -235,16 +226,8 @@ export default function HostControl() {
           </div>
         </div>
 
-        {/* Spotify Authentication */}
-        {gameStatus === 'waiting' && !playlist && (
-          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
-            <h2 className="font-display text-xl font-semibold mb-4">🔐 Authentification Spotify</h2>
-            <SpotifyAuth onAuthSuccess={() => setIsAuthenticated(true)} />
-          </div>
-        )}
-
         {/* Playlist Configuration */}
-        {gameStatus === 'waiting' && !playlist && isAuthenticated && (
+        {gameStatus === 'waiting' && !playlist && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Configuration Playlist</h2>
             <div className="flex gap-3 mb-3">

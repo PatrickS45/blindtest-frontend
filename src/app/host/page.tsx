@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ModeCard } from '@/components/modes/ModeCard'
 import { Button } from '@/components/ui/Button'
+import { SpotifyAuth } from '@/components/auth/SpotifyAuth'
 import { GAME_MODES } from '@/lib/constants'
 import { GameMode } from '@/types/game'
 import { useSocket } from '@/hooks/useSocket'
@@ -11,6 +12,7 @@ import { useSocket } from '@/hooks/useSocket'
 export default function HostModSelection() {
   const router = useRouter()
   const { socket, isConnected, error } = useSocket()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -78,10 +80,12 @@ export default function HostModSelection() {
             <span className="text-gradient-primary">🎵 Blind Test</span>
           </h1>
           <p className="text-title text-text-secondary mb-2">
-            Choisissez votre mode de jeu
+            {isAuthenticated ? 'Choisissez votre mode de jeu' : 'Authentification requise'}
           </p>
           <p className="text-text-secondary text-sm">
-            6 modes différents pour des parties inoubliables !
+            {isAuthenticated
+              ? '6 modes différents pour des parties inoubliables !'
+              : 'Connectez-vous à Spotify pour créer une partie'}
           </p>
         </div>
 
@@ -100,56 +104,86 @@ export default function HostModSelection() {
           </div>
         )}
 
-        {/* Mode Selection Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {GAME_MODES.map((mode) => (
-            <ModeCard
-              key={mode.id}
-              {...mode}
-              selected={selectedMode === mode.id}
-              onClick={() => setSelectedMode(mode.id)}
-            />
-          ))}
-        </div>
-
-        {/* Create Game Button */}
-        <div className="text-center space-y-4">
-          {createError && (
-            <div className="p-4 rounded-2xl bg-error/10 border-2 border-error inline-block">
-              <p className="text-error font-semibold">{createError}</p>
+        {/* Spotify Authentication - Show FIRST */}
+        {!isAuthenticated && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="bg-bg-card rounded-3xl p-8 border-2 border-primary/20">
+              <h2 className="font-display text-2xl font-semibold mb-6 text-center">
+                🔐 Étape 1 : Authentification Spotify
+              </h2>
+              <SpotifyAuth onAuthSuccess={() => setIsAuthenticated(true)} />
+              <div className="mt-6 p-4 bg-primary/10 rounded-xl border border-primary/30">
+                <p className="text-sm text-text-secondary text-center">
+                  💡 <strong>Pourquoi Spotify ?</strong> L'authentification permet d'accéder à
+                  toutes les playlists (publiques et privées) pour créer vos parties de blind test.
+                </p>
+              </div>
             </div>
-          )}
-
-          <div className="flex justify-center gap-4">
-            <Button
-              variant="secondary"
-              size="large"
-              onClick={() => router.push('/')}
-            >
-              ← Retour
-            </Button>
-
-            <Button
-              variant="primary"
-              size="xl"
-              disabled={!selectedMode || !isConnected || isCreating}
-              loading={isCreating}
-              onClick={handleCreateGame}
-              className="min-w-[300px]"
-            >
-              {isCreating ? 'Création...' : 'Créer la partie →'}
-            </Button>
           </div>
+        )}
 
-          {selectedMode && (
-            <p className="text-text-secondary text-sm animate-fade-in">
-              Mode sélectionné :{' '}
-              <span className="font-semibold text-primary">
-                {GAME_MODES.find((m) => m.id === selectedMode)?.name}
-              </span>
-            </p>
-          )}
-        </div>
+        {/* Mode Selection Grid - Show ONLY if authenticated */}
+        {isAuthenticated && (
+          <>
+            <div className="mb-6 text-center">
+              <div className="inline-block bg-success/10 border border-success rounded-2xl px-6 py-3">
+                <p className="text-success font-semibold">
+                  ✓ Authentifié avec Spotify - Étape 2 : Choisissez un mode
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {GAME_MODES.map((mode) => (
+                <ModeCard
+                  key={mode.id}
+                  {...mode}
+                  selected={selectedMode === mode.id}
+                  onClick={() => setSelectedMode(mode.id)}
+                />
+              ))}
+            </div>
+
+            {/* Create Game Button */}
+            <div className="text-center space-y-4">
+              {createError && (
+                <div className="p-4 rounded-2xl bg-error/10 border-2 border-error inline-block">
+                  <p className="text-error font-semibold">{createError}</p>
+                </div>
+              )}
+
+              <div className="flex justify-center gap-4">
+                <Button
+                  variant="secondary"
+                  size="large"
+                  onClick={() => router.push('/')}
+                >
+                  ← Retour
+                </Button>
+
+                <Button
+                  variant="primary"
+                  size="xl"
+                  disabled={!selectedMode || !isConnected || isCreating}
+                  loading={isCreating}
+                  onClick={handleCreateGame}
+                  className="min-w-[300px]"
+                >
+                  {isCreating ? 'Création...' : 'Créer la partie →'}
+                </Button>
+              </div>
+
+              {selectedMode && (
+                <p className="text-text-secondary text-sm animate-fade-in">
+                  Mode sélectionné :{' '}
+                  <span className="font-semibold text-primary">
+                    {GAME_MODES.find((m) => m.id === selectedMode)?.name}
+                  </span>
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Instructions */}
         <div className="mt-16 max-w-2xl mx-auto">
@@ -160,18 +194,22 @@ export default function HostModSelection() {
             <ol className="space-y-3 text-text-secondary">
               <li className="flex items-start">
                 <span className="font-bold text-primary mr-3">1.</span>
-                <span>Sélectionnez un mode de jeu parmi les 6 disponibles</span>
+                <span>Connectez-vous à Spotify (authentification requise)</span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-primary mr-3">2.</span>
-                <span>Cliquez sur "Créer la partie" pour générer un code de salle</span>
+                <span>Sélectionnez un mode de jeu parmi les 6 disponibles</span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-primary mr-3">3.</span>
-                <span>Partagez le code avec vos joueurs (QR code disponible)</span>
+                <span>Cliquez sur "Créer la partie" pour générer un code de salle</span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-primary mr-3">4.</span>
+                <span>Partagez le code avec vos joueurs (QR code disponible)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="font-bold text-primary mr-3">5.</span>
                 <span>Chargez une playlist Spotify et lancez la partie !</span>
               </li>
             </ol>
