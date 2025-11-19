@@ -172,7 +172,7 @@ export default function HostModSelection() {
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-primary mr-3">4.</span>
-                <span>Chargez une playlist Spotify et lancez la partie !</span>
+                <span>Chargez une playlist R2 et lancez la partie !</span>
               </li>
             </ol>
           </div>
