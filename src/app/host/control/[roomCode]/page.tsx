@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { Button } from '@/components/ui/Button'
 import { Leaderboard } from '@/components/ui/Leaderboard'
-import { SpotifyAuth } from '@/components/auth/SpotifyAuth'
 import { Player } from '@/types/game'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +40,6 @@ export default function HostControl() {
   const [totalRounds] = useState<number>(10)
   const [gameDuration, setGameDuration] = useState<number>(0)
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -235,39 +233,48 @@ export default function HostControl() {
           </div>
         </div>
 
-        {/* Spotify Authentication */}
+        {/* Playlist Configuration */}
         {gameStatus === 'waiting' && !playlist && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
-            <h2 className="font-display text-xl font-semibold mb-4">🔐 Authentification Spotify</h2>
-            <SpotifyAuth onAuthSuccess={() => setIsAuthenticated(true)} />
-          </div>
-        )}
-
-        {/* Playlist Configuration */}
-        {gameStatus === 'waiting' && !playlist && isAuthenticated && (
-          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Configuration Playlist</h2>
-            <div className="flex gap-3 mb-3">
-              <input
-                type="text"
-                placeholder="ID Playlist Spotify (ex: 37i9dQZF1DXcBWIGoYBM5M)"
-                value={playlistId}
-                onChange={(e) => setPlaylistId(e.target.value)}
-                className="flex-1 bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none"
-              />
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={handleLoadPlaylist}
-                disabled={!playlistId || isLoadingPlaylist}
-                loading={isLoadingPlaylist}
-              >
-                Charger
-              </Button>
+            <div className="space-y-4">
+              <div className="bg-primary/10 border-2 border-primary/30 rounded-xl p-4">
+                <p className="text-sm text-text-secondary mb-2">
+                  💡 Créez vos playlists via l'interface de gestion :
+                </p>
+                <a
+                  href="https://blindtest-backend-cfbp.onrender.com/playlist-manager.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary font-semibold hover:underline"
+                >
+                  → Ouvrir le gestionnaire de playlists
+                </a>
+              </div>
+
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="ID Playlist R2 (ex: ab04c62031e8298ad3e3023858224480)"
+                  value={playlistId}
+                  onChange={(e) => setPlaylistId(e.target.value)}
+                  className="flex-1 bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none font-mono text-sm"
+                />
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleLoadPlaylist}
+                  disabled={!playlistId || isLoadingPlaylist}
+                  loading={isLoadingPlaylist}
+                >
+                  Charger
+                </Button>
+              </div>
+
+              <p className="text-xs text-text-secondary">
+                ℹ️ L'ID de playlist est un code hexadécimal de 32 caractères (ex: ab04c62031e8298ad3e3023858224480)
+              </p>
             </div>
-            <p className="text-sm text-text-secondary">
-              💡 L'ID se trouve dans l'URL Spotify : open.spotify.com/playlist/<strong>ID_ICI</strong>
-            </p>
           </div>
         )}
 
