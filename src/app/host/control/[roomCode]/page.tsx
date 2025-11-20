@@ -23,6 +23,7 @@ interface TrackData {
 
 interface BuzzedPlayer {
   playerName: string
+  position?: number
 }
 
 export default function HostControl() {
@@ -41,6 +42,7 @@ export default function HostControl() {
   const [totalRounds] = useState<number>(10)
   const [gameDuration, setGameDuration] = useState<number>(0)
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
+  const [gameMode, setGameMode] = useState<string>('accumul_points')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -63,6 +65,13 @@ export default function HostControl() {
 
     socket.on('player_left', (data: any) => {
       setPlayers(data.players)
+    })
+
+    socket.on('round_started', (data: any) => {
+      // Capture game mode
+      if (data.mode) {
+        setGameMode(data.mode)
+      }
     })
 
     socket.on('play_track', (data: TrackData) => {
@@ -120,6 +129,7 @@ export default function HostControl() {
     return () => {
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('round_started')
       socket.off('play_track')
       socket.off('buzz_locked')
       socket.off('round_result')
@@ -326,11 +336,23 @@ export default function HostControl() {
             {/* Buzzed Player */}
             <div className="bg-bg-card rounded-2xl p-6 mb-6 flex items-center gap-4">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-3xl">
-                🎤
+                {gameMode === 'reflexoquiz' && buzzedPlayer.position ? (
+                  buzzedPlayer.position === 1 ? '🥇' : buzzedPlayer.position === 2 ? '🥈' : '🥉'
+                ) : (
+                  '🎤'
+                )}
               </div>
               <div>
                 <div className="font-display text-2xl font-bold">{buzzedPlayer.playerName}</div>
-                <div className="text-text-secondary">A buzzé en premier</div>
+                <div className="text-text-secondary">
+                  {gameMode === 'reflexoquiz' && buzzedPlayer.position ? (
+                    buzzedPlayer.position === 1 ? '1er à buzzer (+15 pts)' :
+                    buzzedPlayer.position === 2 ? '2e à buzzer (+10 pts)' :
+                    '3e à buzzer (+5 pts)'
+                  ) : (
+                    'A buzzé en premier'
+                  )}
+                </div>
               </div>
             </div>
 
