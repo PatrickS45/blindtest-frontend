@@ -26,7 +26,7 @@ export default function HostModSelection() {
 
     try {
       // Emit create_game event and wait for response
-      socket.emit('create_game')
+      socket.emit('create_game', { mode: selectedMode })
 
       // Listen for game creation response
       socket.once('game_created', (data) => {
