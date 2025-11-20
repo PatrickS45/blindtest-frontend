@@ -45,11 +45,12 @@ export default function HostControl() {
 
   // Join as host
   useEffect(() => {
-    if (!socket || !roomCode) return
+    if (!socket || !isConnected || !roomCode) return
 
+    console.log('🎬 Joining as host for room:', roomCode)
     socket.emit('join_as_host', { roomCode })
     setGameStatus('waiting')
-  }, [socket, roomCode])
+  }, [socket, isConnected, roomCode])
 
   // Socket event listeners
   useEffect(() => {
@@ -161,8 +162,11 @@ export default function HostControl() {
   }
 
   const handleStartRound = () => {
-    if (!socket || !playlist) return
-    console.log('▶️ Starting round')
+    if (!socket || !playlist) {
+      console.log('❌ Cannot start round - socket:', !!socket, 'playlist:', !!playlist)
+      return
+    }
+    console.log('▶️ Starting round - roomCode:', roomCode, 'socket.id:', socket.id, 'connected:', socket.connected)
     socket.emit('start_round', { roomCode })
   }
 
