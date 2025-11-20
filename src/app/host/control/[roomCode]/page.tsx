@@ -18,6 +18,7 @@ interface TrackData {
   artist: string
   previewUrl: string
   duration: number
+  startTime?: number
 }
 
 interface BuzzedPlayer {
@@ -71,15 +72,20 @@ export default function HostControl() {
 
       // Play audio
       const audio = new Audio(data.previewUrl)
+
+      // Si un startTime est fourni, attendre que l'audio soit chargé puis seek
+      if (data.startTime && data.startTime > 0) {
+        audio.addEventListener('loadedmetadata', () => {
+          audio.currentTime = data.startTime
+          console.log('🎲 Audio starting at', data.startTime, 'seconds')
+        }, { once: true })
+      }
+
       audio.play().catch((err) => console.error('Audio play error:', err))
       audioRef.current = audio
 
-      // Auto-pause after duration
-      setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.pause()
-        }
-      }, data.duration * 1000)
+      // Note: Le backend gère le timeout de 30s avec auto-skip
+      // Pas besoin de setTimeout ici, ça cause des coupures prématurées
     })
 
     socket.on('buzz_locked', (data: BuzzedPlayer) => {
