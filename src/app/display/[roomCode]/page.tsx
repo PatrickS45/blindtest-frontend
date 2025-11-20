@@ -6,6 +6,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { Leaderboard } from '@/components/ui/Leaderboard'
 import { Player } from '@/types/game'
 import { cn } from '@/lib/utils'
+import confetti from 'canvas-confetti'
 
 interface BuzzedPlayer {
   playerName: string
@@ -33,9 +34,45 @@ export default function DisplayTV() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [timerDuration, setTimerDuration] = useState(10)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
+  const [isShaking, setIsShaking] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Confetti animation
+  const fireConfetti = () => {
+    const duration = 3000
+    const animationEnd = Date.now() + duration
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now()
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval)
+      }
+
+      const particleCount = 50 * (timeLeft / duration)
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+      })
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+      })
+    }, 250)
+  }
+
+  // Shake animation
+  const triggerShake = () => {
+    setIsShaking(true)
+    setTimeout(() => setIsShaking(false), 600)
+  }
 
   // Join as display
   useEffect(() => {
@@ -104,6 +141,13 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
+      // Trigger animations based on result
+      if (data.correct) {
+        fireConfetti()
+      } else {
+        triggerShake()
+      }
+
       setTimeout(() => {
         setGameStatus('waiting')
         setResult(null)
@@ -121,6 +165,9 @@ export default function DisplayTV() {
       setTimeLeft(null)
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      // Trigger shake for skipped round
+      triggerShake()
 
       setTimeout(() => {
         setGameStatus('waiting')
@@ -148,7 +195,12 @@ export default function DisplayTV() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden">
+    <div
+      className={cn(
+        "min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden transition-transform",
+        isShaking && "animate-shake"
+      )}
+    >
       {/* Header */}
       <header className="bg-bg-card/50 backdrop-blur-md border-b-2 border-primary/20 p-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -180,10 +232,17 @@ export default function DisplayTV() {
 
           {/* Playing State */}
           {gameStatus === 'playing' && (
-            <div className="text-center space-y-12 animate-fade-in">
+            <div className="text-center space-y-12 animate-fade-in relative">
+              {/* Ripple Wave Animation */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="ripple-wave" />
+                <div className="ripple-wave" style={{ animationDelay: '0.5s' }} />
+                <div className="ripple-wave" style={{ animationDelay: '1s' }} />
+              </div>
+
               {/* Timer */}
               {timeLeft !== null && (
-                <div className="relative">
+                <div className="relative z-10">
                   {/* Circular Timer */}
                   <div
                     className={cn(
@@ -210,17 +269,11 @@ export default function DisplayTV() {
                       }}
                     />
                   </div>
-
-                  {timeLeft <= 0 && (
-                    <p className="mt-6 text-xl text-warning animate-pulse">
-                      ⚠️ Temps écoulé - Le MC décide
-                    </p>
-                  )}
                 </div>
               )}
 
               {/* Audio Visualizer */}
-              <div className="flex justify-center gap-2">
+              <div className="flex justify-center gap-2 relative z-10">
                 {[...Array(12)].map((_, i) => (
                   <div
                     key={i}
@@ -233,7 +286,7 @@ export default function DisplayTV() {
                 ))}
               </div>
 
-              <p className="text-2xl text-text-secondary">Qui trouvera en premier ?</p>
+              <p className="text-2xl text-text-secondary relative z-10">Qui trouvera en premier ?</p>
             </div>
           )}
 
@@ -281,15 +334,21 @@ export default function DisplayTV() {
               )}
             >
               <div className="text-9xl mb-6 animate-bounce">
-                {result.correct ? '🎉' : '😢'}
+                {result.correct ? '🎉' : result.message ? '😔' : '😢'}
               </div>
               <h1 className="text-hero font-display font-bold mb-6">
-                {result.correct ? 'Bravo !' : 'Dommage !'}
+                {result.correct ? 'Bravo !' : result.message ? result.message : 'Dommage !'}
               </h1>
 
               {result.correct && result.player && (
                 <div className="text-3xl mb-8">
                   <strong>{result.player.name}</strong> gagne {result.points} points !
+                </div>
+              )}
+
+              {!result.correct && result.message && (
+                <div className="text-3xl mb-8 text-warning">
+                  ⏰ Temps écoulé - Aucun joueur n'a buzzé
                 </div>
               )}
 
