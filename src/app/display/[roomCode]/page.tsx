@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 interface BuzzedPlayer {
   playerName: string
   playerColor?: string
+  position?: number
 }
 
 interface RoundResult {
@@ -31,6 +32,7 @@ export default function DisplayTV() {
   const [result, setResult] = useState<RoundResult | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [timerDuration, setTimerDuration] = useState(10)
+  const [gameMode, setGameMode] = useState<string>('accumul_points')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -52,6 +54,13 @@ export default function DisplayTV() {
 
     socket.on('player_joined', (data: any) => setPlayers(data.players || []))
     socket.on('player_left', (data: any) => setPlayers(data.players || []))
+
+    socket.on('round_started', (data: any) => {
+      // Capture game mode
+      if (data.mode) {
+        setGameMode(data.mode)
+      }
+    })
 
     socket.on('play_track', (data: any) => {
       setGameStatus('playing')
@@ -236,10 +245,29 @@ export default function DisplayTV() {
                   className="w-48 h-48 rounded-full mx-auto flex items-center justify-center text-8xl mb-6 animate-bounce"
                   style={{ backgroundColor: buzzedPlayer.playerColor || '#FF3366' }}
                 >
-                  🎤
+                  {gameMode === 'reflexoquiz' && buzzedPlayer.position ? (
+                    buzzedPlayer.position === 1 ? '🥇' : buzzedPlayer.position === 2 ? '🥈' : '🥉'
+                  ) : (
+                    '🎤'
+                  )}
                 </div>
                 <h1 className="text-hero font-display font-bold mb-2">{buzzedPlayer.playerName}</h1>
-                <p className="text-title text-text-secondary">a buzzé !</p>
+                <p className="text-title text-text-secondary">
+                  {gameMode === 'reflexoquiz' && buzzedPlayer.position ? (
+                    buzzedPlayer.position === 1 ? '1er à buzzer !' :
+                    buzzedPlayer.position === 2 ? '2e à buzzer !' :
+                    '3e à buzzer !'
+                  ) : (
+                    'a buzzé !'
+                  )}
+                </p>
+                {gameMode === 'reflexoquiz' && buzzedPlayer.position && (
+                  <p className="text-2xl text-primary mt-4 font-bold">
+                    {buzzedPlayer.position === 1 ? '+15 points' :
+                     buzzedPlayer.position === 2 ? '+10 points' :
+                     '+5 points'}
+                  </p>
+                )}
               </div>
             </div>
           )}

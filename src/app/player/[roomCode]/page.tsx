@@ -7,6 +7,17 @@ import { useSoundEffect } from '@/hooks/useAudio'
 import { Buzzer } from '@/components/game/Buzzer'
 import { cn } from '@/lib/utils'
 
+// Helper to get position badge for Reflexoquiz mode
+function getPositionBadge(position: number | null) {
+  if (!position) return null
+  const badges: Record<number, { emoji: string; label: string; points: string; color: string }> = {
+    1: { emoji: '🥇', label: '1er', points: '+15 pts', color: 'text-yellow-400' },
+    2: { emoji: '🥈', label: '2e', points: '+10 pts', color: 'text-gray-300' },
+    3: { emoji: '🥉', label: '3e', points: '+5 pts', color: 'text-orange-400' },
+  }
+  return badges[position] || null
+}
+
 export default function Player() {
   const params = useParams()
   const router = useRouter()
@@ -24,6 +35,8 @@ export default function Player() {
   const [roundNumber, setRoundNumber] = useState(0)
   const [answerTimer, setAnswerTimer] = useState(0)
   const [lastResult, setLastResult] = useState<any>(null)
+  const [gameMode, setGameMode] = useState<string>('accumul_points')
+  const [myBuzzPosition, setMyBuzzPosition] = useState<number | null>(null)
 
   const myBuzzerSoundRef = useRef<number | null>(null)
 
@@ -72,21 +85,32 @@ export default function Player() {
     if (!socket || !joined) return
 
     socket.on('round_started', (data: any) => {
-      console.log('🎵 Round started')
+      console.log('🎵 Round started', data)
       setGameStatus('playing')
       setCanBuzz(true)
       setLastResult(null)
       setBuzzedPlayer('')
       setAnswerTimer(0)
       setRoundNumber((prev) => prev + 1)
+      setMyBuzzPosition(null)
+
+      // Capture game mode
+      if (data.mode) {
+        setGameMode(data.mode)
+      }
     })
 
     socket.on('buzz_locked', (data: any) => {
-      console.log('⚡ Buzz locked:', data.playerName)
+      console.log('⚡ Buzz locked:', data.playerName, 'position:', data.position)
       setCanBuzz(false)
       setBuzzedPlayer(data.playerName)
       setGameStatus('locked')
       setAnswerTimer(8)
+
+      // Store buzz position for reflexoquiz mode
+      if (data.playerName === playerName && data.position) {
+        setMyBuzzPosition(data.position)
+      }
     })
 
     socket.on('timeout_warning', (data: any) => {
@@ -102,8 +126,8 @@ export default function Player() {
       setAnswerTimer(0)
 
       // Play feedback sound if I was the one who answered
-      if (data.player && data.player.name === playerName) {
-        data.correct ? playCorrect() : playWrong()
+      if (data.playerName === playerName) {
+        data.isCorrect ? playCorrect() : playWrong()
       }
 
       // Update my score
@@ -254,10 +278,31 @@ export default function Player() {
           <div className="text-center text-text-secondary">
             <p className="text-xl">⏳ En attente de la prochaine manche...</p>
             {lastResult && (
-              <div className={cn('mt-4 p-4 rounded-2xl', lastResult.correct ? 'bg-success/20' : 'bg-error/20')}>
-                <p className={cn('font-semibold', lastResult.correct ? 'text-success' : 'text-error')}>
-                  {lastResult.correct ? '✓ Bonne réponse !' : '✗ Mauvaise réponse'}
+              <div className={cn('mt-4 p-6 rounded-2xl', lastResult.isCorrect ? 'bg-success/20' : 'bg-error/20')}>
+                <p className={cn('font-semibold text-xl', lastResult.isCorrect ? 'text-success' : 'text-error')}>
+                  {lastResult.isCorrect ? '✓ Bonne réponse !' : '✗ Mauvaise réponse'}
                 </p>
+
+                {/* Show position and points for Reflexoquiz mode */}
+                {gameMode === 'reflexoquiz' && lastResult.playerName === playerName && lastResult.buzzPosition && (
+                  <div className="mt-3">
+                    {(() => {
+                      const badge = getPositionBadge(lastResult.buzzPosition)
+                      return badge ? (
+                        <div className={cn('text-3xl font-display', badge.color)}>
+                          {badge.emoji} {badge.label} - {lastResult.pointsAwarded > 0 ? '+' : ''}{lastResult.pointsAwarded} points
+                        </div>
+                      ) : null
+                    })()}
+                  </div>
+                )}
+
+                {/* Show points for other modes */}
+                {gameMode !== 'reflexoquiz' && lastResult.playerName === playerName && lastResult.pointsAwarded !== undefined && (
+                  <p className="mt-2 text-text-secondary">
+                    {lastResult.pointsAwarded > 0 ? '+' : ''}{lastResult.pointsAwarded} points
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -275,6 +320,21 @@ export default function Player() {
             {buzzedPlayer === playerName ? (
               <>
                 <p className="text-3xl font-display font-bold text-primary">⚡ Vous avez buzzé !</p>
+
+                {/* Show position badge for Reflexoquiz mode */}
+                {gameMode === 'reflexoquiz' && myBuzzPosition && (
+                  <div className="animate-bounce">
+                    {(() => {
+                      const badge = getPositionBadge(myBuzzPosition)
+                      return badge ? (
+                        <div className={cn('text-5xl font-display font-bold', badge.color)}>
+                          {badge.emoji} {badge.label} - {badge.points}
+                        </div>
+                      ) : null
+                    })()}
+                  </div>
+                )}
+
                 <p className="text-text-secondary">Donnez votre réponse au MC</p>
                 {answerTimer > 0 && (
                   <div className="relative">

@@ -18,10 +18,12 @@ interface TrackData {
   artist: string
   previewUrl: string
   duration: number
+  startTime?: number
 }
 
 interface BuzzedPlayer {
   playerName: string
+  position?: number
 }
 
 export default function HostControl() {
@@ -40,16 +42,18 @@ export default function HostControl() {
   const [totalRounds] = useState<number>(10)
   const [gameDuration, setGameDuration] = useState<number>(0)
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
+  const [gameMode, setGameMode] = useState<string>('accumul_points')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Join as host
   useEffect(() => {
-    if (!socket || !roomCode) return
+    if (!socket || !isConnected || !roomCode) return
 
+    console.log('🎬 Joining as host for room:', roomCode)
     socket.emit('join_as_host', { roomCode })
     setGameStatus('waiting')
-  }, [socket, roomCode])
+  }, [socket, isConnected, roomCode])
 
   // Socket event listeners
   useEffect(() => {
@@ -63,6 +67,13 @@ export default function HostControl() {
       setPlayers(data.players)
     })
 
+    socket.on('round_started', (data: any) => {
+      // Capture game mode
+      if (data.mode) {
+        setGameMode(data.mode)
+      }
+    })
+
     socket.on('play_track', (data: TrackData) => {
       setCurrentTrack(data)
       setGameStatus('playing')
@@ -70,15 +81,20 @@ export default function HostControl() {
 
       // Play audio
       const audio = new Audio(data.previewUrl)
+
+      // Si un startTime est fourni, attendre que l'audio soit chargé puis seek
+      if (data.startTime && data.startTime > 0) {
+        audio.addEventListener('loadedmetadata', () => {
+          audio.currentTime = data.startTime
+          console.log('🎲 Audio starting at', data.startTime, 'seconds')
+        }, { once: true })
+      }
+
       audio.play().catch((err) => console.error('Audio play error:', err))
       audioRef.current = audio
 
-      // Auto-pause after duration
-      setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.pause()
-        }
-      }, data.duration * 1000)
+      // Note: Le backend gère le timeout de 30s avec auto-skip
+      // Pas besoin de setTimeout ici, ça cause des coupures prématurées
     })
 
     socket.on('buzz_locked', (data: BuzzedPlayer) => {
@@ -113,6 +129,7 @@ export default function HostControl() {
     return () => {
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('round_started')
       socket.off('play_track')
       socket.off('buzz_locked')
       socket.off('round_result')
@@ -154,8 +171,11 @@ export default function HostControl() {
   }
 
   const handleStartRound = () => {
-    if (!socket || !playlist) return
-    console.log('▶️ Starting round')
+    if (!socket || !playlist) {
+      console.log('❌ Cannot start round - socket:', !!socket, 'playlist:', !!playlist)
+      return
+    }
+    console.log('▶️ Starting round - roomCode:', roomCode, 'socket.id:', socket.id, 'connected:', socket.connected)
     socket.emit('start_round', { roomCode })
   }
 
@@ -230,27 +250,44 @@ export default function HostControl() {
         {gameStatus === 'waiting' && !playlist && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Configuration Playlist</h2>
-            <div className="flex gap-3 mb-3">
-              <input
-                type="text"
-                placeholder="ID Playlist Spotify (ex: 37i9dQZF1DXcBWIGoYBM5M)"
-                value={playlistId}
-                onChange={(e) => setPlaylistId(e.target.value)}
-                className="flex-1 bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none"
-              />
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={handleLoadPlaylist}
-                disabled={!playlistId || isLoadingPlaylist}
-                loading={isLoadingPlaylist}
-              >
-                Charger
-              </Button>
+            <div className="space-y-4">
+              <div className="bg-primary/10 border-2 border-primary/30 rounded-xl p-4">
+                <p className="text-sm text-text-secondary mb-2">
+                  💡 Créez vos playlists via l'interface de gestion :
+                </p>
+                <a
+                  href="https://blindtest-backend-cfbp.onrender.com/playlist-manager.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary font-semibold hover:underline"
+                >
+                  → Ouvrir le gestionnaire de playlists
+                </a>
+              </div>
+
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="ID Playlist R2 (ex: ab04c62031e8298ad3e3023858224480)"
+                  value={playlistId}
+                  onChange={(e) => setPlaylistId(e.target.value)}
+                  className="flex-1 bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none font-mono text-sm"
+                />
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleLoadPlaylist}
+                  disabled={!playlistId || isLoadingPlaylist}
+                  loading={isLoadingPlaylist}
+                >
+                  Charger
+                </Button>
+              </div>
+
+              <p className="text-xs text-text-secondary">
+                ℹ️ L'ID de playlist est un code hexadécimal de 32 caractères (ex: ab04c62031e8298ad3e3023858224480)
+              </p>
             </div>
-            <p className="text-sm text-text-secondary">
-              💡 L'ID se trouve dans l'URL Spotify : open.spotify.com/playlist/<strong>ID_ICI</strong>
-            </p>
           </div>
         )}
 
@@ -292,11 +329,23 @@ export default function HostControl() {
             {/* Buzzed Player */}
             <div className="bg-bg-card rounded-2xl p-6 mb-6 flex items-center gap-4">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-3xl">
-                🎤
+                {gameMode === 'reflexoquiz' && buzzedPlayer.position ? (
+                  buzzedPlayer.position === 1 ? '🥇' : buzzedPlayer.position === 2 ? '🥈' : '🥉'
+                ) : (
+                  '🎤'
+                )}
               </div>
               <div>
                 <div className="font-display text-2xl font-bold">{buzzedPlayer.playerName}</div>
-                <div className="text-text-secondary">A buzzé en premier</div>
+                <div className="text-text-secondary">
+                  {gameMode === 'reflexoquiz' && buzzedPlayer.position ? (
+                    buzzedPlayer.position === 1 ? '1er à buzzer (+15 pts)' :
+                    buzzedPlayer.position === 2 ? '2e à buzzer (+10 pts)' :
+                    '3e à buzzer (+5 pts)'
+                  ) : (
+                    'A buzzé en premier'
+                  )}
+                </div>
               </div>
             </div>
 
