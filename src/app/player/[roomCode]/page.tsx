@@ -102,8 +102,8 @@ export default function Player() {
       setAnswerTimer(0)
 
       // Play feedback sound if I was the one who answered
-      if (data.player && data.player.name === playerName) {
-        data.correct ? playCorrect() : playWrong()
+      if (data.playerName === playerName) {
+        data.isCorrect ? playCorrect() : playWrong()
       }
 
       // Update my score
@@ -254,9 +254,9 @@ export default function Player() {
           <div className="text-center text-text-secondary">
             <p className="text-xl">⏳ En attente de la prochaine manche...</p>
             {lastResult && (
-              <div className={cn('mt-4 p-4 rounded-2xl', lastResult.correct ? 'bg-success/20' : 'bg-error/20')}>
-                <p className={cn('font-semibold', lastResult.correct ? 'text-success' : 'text-error')}>
-                  {lastResult.correct ? '✓ Bonne réponse !' : '✗ Mauvaise réponse'}
+              <div className={cn('mt-4 p-4 rounded-2xl', lastResult.isCorrect ? 'bg-success/20' : 'bg-error/20')}>
+                <p className={cn('font-semibold', lastResult.isCorrect ? 'text-success' : 'text-error')}>
+                  {lastResult.isCorrect ? '✓ Bonne réponse !' : '✗ Mauvaise réponse'}
                 </p>
               </div>
             )}
