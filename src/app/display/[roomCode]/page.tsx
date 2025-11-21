@@ -47,6 +47,7 @@ export default function DisplayTV() {
     const duration = 3000
     const animationEnd = Date.now() + duration
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
     const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
 
     const interval = setInterval(() => {
@@ -57,17 +58,15 @@ export default function DisplayTV() {
       }
 
       const particleCount = 50 * (timeLeft / duration)
-
-      // Since particles fall down, start a bit higher than random
       confetti({
         ...defaults,
         particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
       })
       confetti({
         ...defaults,
         particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
       })
     }, 250)
   }
@@ -75,7 +74,7 @@ export default function DisplayTV() {
   // Shake animation
   const triggerShake = () => {
     setIsShaking(true)
-    setTimeout(() => setIsShaking(false), 500)
+    setTimeout(() => setIsShaking(false), 600)
   }
 
   // Join as display
@@ -155,9 +154,10 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
-      // Trigger animations for correct answers
+      // Trigger animations based on result
       if (data.correct) {
         fireConfetti()
+      } else {
         triggerShake()
       }
 
@@ -178,6 +178,9 @@ export default function DisplayTV() {
       setTimeLeft(null)
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      // Trigger shake for skipped round
+      triggerShake()
 
       setTimeout(() => {
         setGameStatus('waiting')
@@ -218,10 +221,12 @@ export default function DisplayTV() {
   }, [])
 
   return (
-    <div className={cn(
-      "min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden",
-      isShaking && "animate-shake"
-    )}>
+    <div
+      className={cn(
+        "min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden transition-transform",
+        isShaking && "animate-shake"
+      )}
+    >
       {/* Header */}
       <header className="bg-bg-card/50 backdrop-blur-md border-b-2 border-primary/20 p-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -253,10 +258,17 @@ export default function DisplayTV() {
 
           {/* Playing State */}
           {gameStatus === 'playing' && (
-            <div className="text-center space-y-12 animate-fade-in">
+            <div className="text-center space-y-12 animate-fade-in relative">
+              {/* Ripple Wave Animation */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="ripple-wave" />
+                <div className="ripple-wave" style={{ animationDelay: '0.5s' }} />
+                <div className="ripple-wave" style={{ animationDelay: '1s' }} />
+              </div>
+
               {/* Timer */}
               {timeLeft !== null && (
-                <div className="relative">
+                <div className="relative z-10">
                   {/* Circular Timer */}
                   <div
                     className={cn(
@@ -283,17 +295,11 @@ export default function DisplayTV() {
                       }}
                     />
                   </div>
-
-                  {timeLeft <= 0 && (
-                    <p className="mt-6 text-xl text-warning animate-pulse">
-                      ⚠️ Temps écoulé - Le MC décide
-                    </p>
-                  )}
                 </div>
               )}
 
               {/* Audio Visualizer */}
-              <div className="flex justify-center gap-2">
+              <div className="flex justify-center gap-2 relative z-10">
                 {[...Array(12)].map((_, i) => (
                   <div
                     key={i}
@@ -307,7 +313,7 @@ export default function DisplayTV() {
               </div>
 
               {gameMode === 'tueurs_gages' ? (
-                <div className="bg-error/20 border-4 border-error rounded-3xl p-8">
+                <div className="bg-error/20 border-4 border-error rounded-3xl p-8 relative z-10">
                   <div className="text-6xl mb-4">🎯</div>
                   <p className="text-3xl font-display font-bold text-error">
                     Mode Tueurs à Gages !
@@ -317,14 +323,14 @@ export default function DisplayTV() {
                   </p>
                 </div>
               ) : gameMode === 'chaud_devant' && bombHolder ? (
-                <div className="bg-warning/20 border-4 border-warning rounded-3xl p-8 animate-pulse">
+                <div className="bg-warning/20 border-4 border-warning rounded-3xl p-8 animate-pulse relative z-10">
                   <div className="text-6xl mb-4">💣</div>
                   <p className="text-2xl font-display font-bold text-warning">
                     {bombHolder} a la bombe !
                   </p>
                 </div>
               ) : gameMode === 'questions_rafale' && hints.length > 0 ? (
-                <div className="w-full max-w-4xl space-y-4">
+                <div className="w-full max-w-4xl space-y-4 relative z-10">
                   <div className="bg-success/20 border-2 border-success/30 rounded-3xl p-6">
                     <h3 className="text-3xl font-display font-bold text-success text-center flex items-center justify-center gap-3">
                       <span className="text-5xl">💡</span>
@@ -410,15 +416,21 @@ export default function DisplayTV() {
               )}
             >
               <div className="text-9xl mb-6 animate-bounce">
-                {result.correct ? '🎉' : '😢'}
+                {result.correct ? '🎉' : result.message ? '😔' : '😢'}
               </div>
               <h1 className="text-hero font-display font-bold mb-6">
-                {result.correct ? 'Bravo !' : 'Dommage !'}
+                {result.correct ? 'Bravo !' : result.message ? result.message : 'Dommage !'}
               </h1>
 
               {result.correct && result.player && (
                 <div className="text-3xl mb-8">
                   <strong>{result.player.name}</strong> gagne {result.points} points !
+                </div>
+              )}
+
+              {!result.correct && result.message && (
+                <div className="text-3xl mb-8 text-warning">
+                  ⏰ Temps écoulé - Aucun joueur n'a buzzé
                 </div>
               )}
 

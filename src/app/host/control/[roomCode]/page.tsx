@@ -145,13 +145,6 @@ export default function HostControl() {
     return () => clearInterval(interval)
   }, [])
 
-  // Save return URL for OAuth redirect
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('spotify_auth_return_url', `/host/control/${roomCode}`)
-    }
-  }, [roomCode])
-
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
