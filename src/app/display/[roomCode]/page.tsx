@@ -28,7 +28,7 @@ export default function DisplayTV() {
   const { socket } = useSocket()
 
   const [players, setPlayers] = useState<Player[]>([])
-  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'buzzed' | 'result'>('waiting')
+  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'buzzed' | 'result' | 'finished'>('waiting')
   const [buzzedPlayer, setBuzzedPlayer] = useState<BuzzedPlayer | null>(null)
   const [result, setResult] = useState<RoundResult | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
@@ -38,6 +38,7 @@ export default function DisplayTV() {
   const [hints, setHints] = useState<string[]>([])
   const [currentHintIndex, setCurrentHintIndex] = useState(-1)
   const [isShaking, setIsShaking] = useState(false)
+  const [finalResults, setFinalResults] = useState<{ leaderboard: Player[]; totalRounds: number } | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -198,6 +199,21 @@ export default function DisplayTV() {
       setCurrentHintIndex(data.hintIndex)
     })
 
+    socket.on('game_finished', (data: any) => {
+      console.log('🏁 Game finished:', data)
+      setFinalResults({
+        leaderboard: data.leaderboard || [],
+        totalRounds: data.totalRounds || 0
+      })
+      setGameStatus('finished')
+      setPlayers(data.leaderboard || [])
+      if (audioRef.current) audioRef.current.pause()
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      // Trigger confetti celebration
+      fireConfetti()
+    })
+
     return () => {
       socket.off('player_joined')
       socket.off('player_left')
@@ -209,6 +225,7 @@ export default function DisplayTV() {
       socket.off('round_skipped')
       socket.off('bomb_holder_changed')
       socket.off('hint_revealed')
+      socket.off('game_finished')
     }
   }, [socket])
 
@@ -438,6 +455,91 @@ export default function DisplayTV() {
                 <div className="text-8xl mb-6">🎵</div>
                 <h2 className="text-2xl text-text-secondary mb-4">La réponse était :</h2>
                 <p className="text-4xl font-display font-bold">{result.answer}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Finished State - Final Results */}
+          {gameStatus === 'finished' && finalResults && (
+            <div className="text-center animate-fade-in">
+              <div className="text-9xl mb-6 animate-bounce">
+                🏆
+              </div>
+              <h1 className="text-hero font-display font-bold mb-2 text-gradient-primary">
+                Partie Terminée !
+              </h1>
+              <p className="text-2xl text-text-secondary mb-8">
+                {finalResults.totalRounds} manche{finalResults.totalRounds > 1 ? 's' : ''} jouée{finalResults.totalRounds > 1 ? 's' : ''}
+              </p>
+
+              {/* Winner Podium */}
+              {finalResults.leaderboard.length > 0 && (
+                <div className="mb-12">
+                  <div className="bg-primary/10 border-4 border-primary rounded-3xl p-8 inline-block">
+                    <div className="text-8xl mb-4">👑</div>
+                    <h2 className="text-4xl font-display font-bold text-primary mb-2">
+                      {finalResults.leaderboard[0].name}
+                    </h2>
+                    <p className="text-5xl font-bold text-primary">
+                      {finalResults.leaderboard[0].score} points
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Top 3 Podium */}
+              {finalResults.leaderboard.length >= 3 && (
+                <div className="flex justify-center gap-6 mb-8">
+                  {/* 2nd Place */}
+                  {finalResults.leaderboard[1] && (
+                    <div className="bg-bg-card rounded-2xl p-6 border-2 border-border w-48">
+                      <div className="text-5xl mb-2">🥈</div>
+                      <h3 className="font-bold text-xl mb-1">{finalResults.leaderboard[1].name}</h3>
+                      <p className="text-2xl font-bold text-text-secondary">{finalResults.leaderboard[1].score} pts</p>
+                    </div>
+                  )}
+
+                  {/* 1st Place (already shown above with crown) */}
+
+                  {/* 3rd Place */}
+                  {finalResults.leaderboard[2] && (
+                    <div className="bg-bg-card rounded-2xl p-6 border-2 border-border w-48">
+                      <div className="text-5xl mb-2">🥉</div>
+                      <h3 className="font-bold text-xl mb-1">{finalResults.leaderboard[2].name}</h3>
+                      <p className="text-2xl font-bold text-text-secondary">{finalResults.leaderboard[2].score} pts</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Full Leaderboard */}
+              <div className="bg-bg-card rounded-3xl p-8 inline-block max-w-2xl">
+                <h3 className="font-display text-2xl font-bold mb-6 flex items-center justify-center gap-2">
+                  <span>📊</span>
+                  <span>Classement Final</span>
+                </h3>
+                <div className="space-y-2">
+                  {finalResults.leaderboard.map((player, index) => (
+                    <div
+                      key={player.id}
+                      className={cn(
+                        'flex items-center justify-between p-4 rounded-xl',
+                        index === 0 ? 'bg-primary/20 border-2 border-primary' :
+                        index === 1 ? 'bg-border/20' :
+                        index === 2 ? 'bg-border/20' :
+                        'bg-bg-dark'
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-2xl font-bold w-8">
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
+                        </span>
+                        <span className="font-semibold text-lg">{player.name}</span>
+                      </div>
+                      <span className="text-2xl font-bold text-primary">{player.score}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
