@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { GAME_MODES } from '@/lib/constants'
 import { GameMode } from '@/types/game'
 import { useSocket } from '@/hooks/useSocket'
+import { cn } from '@/lib/utils'
 
 export default function HostModSelection() {
   const router = useRouter()
@@ -14,6 +15,8 @@ export default function HostModSelection() {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [numberOfRounds, setNumberOfRounds] = useState(10)
+  const [randomStart, setRandomStart] = useState(true)
 
   const handleCreateGame = async () => {
     if (!selectedMode || !socket) {
@@ -26,7 +29,13 @@ export default function HostModSelection() {
 
     try {
       // Emit create_game event and wait for response
-      socket.emit('create_game', { mode: selectedMode })
+      socket.emit('create_game', {
+        mode: selectedMode,
+        config: {
+          numberOfRounds,
+          randomStart
+        }
+      })
 
       // Listen for game creation response
       socket.once('game_created', (data) => {
@@ -111,6 +120,66 @@ export default function HostModSelection() {
             />
           ))}
         </div>
+
+        {/* Game Configuration */}
+        {selectedMode && (
+          <div className="mb-12 max-w-2xl mx-auto animate-fade-in">
+            <div className="bg-bg-card rounded-3xl p-8 border-2 border-primary/20">
+              <h3 className="font-display text-xl font-semibold mb-6 text-center">
+                ⚙️ Configuration de la partie
+              </h3>
+
+              {/* Number of Rounds Slider */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label htmlFor="rounds" className="font-semibold text-text-primary">
+                    Nombre de manches
+                  </label>
+                  <span className="text-2xl font-bold text-primary">{numberOfRounds}</span>
+                </div>
+                <input
+                  type="range"
+                  id="rounds"
+                  min="5"
+                  max="20"
+                  value={numberOfRounds}
+                  onChange={(e) => setNumberOfRounds(Number(e.target.value))}
+                  className="w-full h-2 bg-bg-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between text-xs text-text-secondary mt-1">
+                  <span>5 manches</span>
+                  <span>20 manches</span>
+                </div>
+              </div>
+
+              {/* Random Start Toggle */}
+              <div className="flex items-center justify-between p-4 bg-bg-dark rounded-xl">
+                <div>
+                  <p className="font-semibold text-text-primary mb-1">
+                    🎲 Démarrage aléatoire
+                  </p>
+                  <p className="text-sm text-text-secondary">
+                    Les morceaux démarrent à un moment aléatoire (10-70%)
+                  </p>
+                </div>
+                <button
+                  onClick={() => setRandomStart(!randomStart)}
+                  className={cn(
+                    'relative inline-flex h-8 w-14 items-center rounded-full transition-colors',
+                    randomStart ? 'bg-primary' : 'bg-border'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-block h-6 w-6 transform rounded-full bg-white transition-transform',
+                      randomStart ? 'translate-x-7' : 'translate-x-1'
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create Game Button */}
         <div className="text-center space-y-4">
