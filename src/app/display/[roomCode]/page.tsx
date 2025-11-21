@@ -6,6 +6,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { Leaderboard } from '@/components/ui/Leaderboard'
 import { Player } from '@/types/game'
 import { cn } from '@/lib/utils'
+import confetti from 'canvas-confetti'
 
 interface BuzzedPlayer {
   playerName: string
@@ -46,10 +47,7 @@ export default function DisplayTV() {
     const duration = 3000
     const animationEnd = Date.now() + duration
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
-
-    const randomInRange = (min: number, max: number) => {
-      return Math.random() * (max - min) + min
-    }
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
 
     const interval = setInterval(() => {
       const timeLeft = animationEnd - Date.now()
@@ -61,19 +59,23 @@ export default function DisplayTV() {
       const particleCount = 50 * (timeLeft / duration)
 
       // Since particles fall down, start a bit higher than random
-      if (typeof window !== 'undefined' && (window as any).confetti) {
-        ;(window as any).confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
-        })
-        ;(window as any).confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
-        })
-      }
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      })
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      })
     }, 250)
+  }
+
+  // Shake animation
+  const triggerShake = () => {
+    setIsShaking(true)
+    setTimeout(() => setIsShaking(false), 500)
   }
 
   // Join as display
@@ -153,6 +155,12 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
+      // Trigger animations for correct answers
+      if (data.correct) {
+        fireConfetti()
+        triggerShake()
+      }
+
       setTimeout(() => {
         setGameStatus('waiting')
         setResult(null)
@@ -210,7 +218,10 @@ export default function DisplayTV() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden">
+    <div className={cn(
+      "min-h-screen bg-gradient-to-br from-bg-dark via-bg-medium to-bg-dark text-text-primary overflow-hidden",
+      isShaking && "animate-shake"
+    )}>
       {/* Header */}
       <header className="bg-bg-card/50 backdrop-blur-md border-b-2 border-primary/20 p-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
