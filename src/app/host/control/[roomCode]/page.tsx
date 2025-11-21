@@ -308,13 +308,46 @@ export default function HostControl() {
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Titre en cours</h2>
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center text-3xl">
-                🎵
+                {gameMode === 'tueurs_gages' ? '🎯' :
+                 gameMode === 'chaud_devant' ? '💣' :
+                 gameMode === 'questions_rafale' ? '💡' : '🎵'}
               </div>
               <div>
-                <div className="font-semibold">Extrait audio en lecture</div>
-                <div className="text-text-secondary text-sm">30 secondes</div>
+                <div className="font-semibold">
+                  {gameMode === 'tueurs_gages' ? 'Tueurs à Gages' :
+                   gameMode === 'chaud_devant' ? 'Chaud Devant' :
+                   gameMode === 'questions_rafale' ? 'Questions en Rafale' :
+                   'Extrait audio en lecture'}
+                </div>
+                <div className="text-text-secondary text-sm">
+                  {gameMode === 'tueurs_gages' ? 'Les joueurs sélectionnent leurs cibles...' :
+                   gameMode === 'chaud_devant' ? 'La bombe passe entre les joueurs...' :
+                   gameMode === 'questions_rafale' ? 'Des indices apparaissent progressivement...' :
+                   '30 secondes'}
+                </div>
               </div>
             </div>
+            {gameMode === 'tueurs_gages' && (
+              <div className="bg-error/10 border-2 border-error/20 rounded-xl p-4 mb-4">
+                <p className="text-sm text-text-secondary">
+                  🎯 Mode Tueurs à Gages : Les points seront volés aux cibles en cas de bonne réponse !
+                </p>
+              </div>
+            )}
+            {gameMode === 'chaud_devant' && (
+              <div className="bg-warning/10 border-2 border-warning/20 rounded-xl p-4 mb-4">
+                <p className="text-sm text-text-secondary">
+                  💣 Mode Chaud Devant : La bombe passe aléatoirement entre les joueurs. Celui qui l'a quand le temps expire perd des points !
+                </p>
+              </div>
+            )}
+            {gameMode === 'questions_rafale' && (
+              <div className="bg-success/10 border-2 border-success/20 rounded-xl p-4 mb-4">
+                <p className="text-sm text-text-secondary">
+                  💡 Mode Questions en Rafale : Des indices apparaissent progressivement pour aider les joueurs !
+                </p>
+              </div>
+            )}
             <Button variant="secondary" size="medium" onClick={handleSkipTrack}>
               ⏭️ Passer
             </Button>

@@ -34,6 +34,9 @@ export default function DisplayTV() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [timerDuration, setTimerDuration] = useState(10)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
+  const [bombHolder, setBombHolder] = useState<string | null>(null)
+  const [hints, setHints] = useState<string[]>([])
+  const [currentHintIndex, setCurrentHintIndex] = useState(-1)
   const [isShaking, setIsShaking] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -96,6 +99,16 @@ export default function DisplayTV() {
       // Capture game mode
       if (data.mode) {
         setGameMode(data.mode)
+      }
+      // Reset bomb holder
+      setBombHolder(null)
+      // Initialize hints for questions_rafale mode
+      if (data.hints) {
+        setHints(data.hints)
+        setCurrentHintIndex(-1)
+      } else {
+        setHints([])
+        setCurrentHintIndex(-1)
       }
     })
 
@@ -175,14 +188,27 @@ export default function DisplayTV() {
       }, 5000)
     })
 
+    socket.on('bomb_holder_changed', (data: any) => {
+      console.log('💣 Bomb holder changed:', data.bombHolder)
+      setBombHolder(data.bombHolder)
+    })
+
+    socket.on('hint_revealed', (data: any) => {
+      console.log('💡 Hint revealed:', data.hintIndex)
+      setCurrentHintIndex(data.hintIndex)
+    })
+
     return () => {
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('round_started')
       socket.off('play_track')
       socket.off('stop_music')
       socket.off('buzz_locked')
       socket.off('round_result')
       socket.off('round_skipped')
+      socket.off('bomb_holder_changed')
+      socket.off('hint_revealed')
     }
   }, [socket])
 
@@ -286,7 +312,63 @@ export default function DisplayTV() {
                 ))}
               </div>
 
-              <p className="text-2xl text-text-secondary relative z-10">Qui trouvera en premier ?</p>
+              {gameMode === 'tueurs_gages' ? (
+                <div className="bg-error/20 border-4 border-error rounded-3xl p-8 relative z-10">
+                  <div className="text-6xl mb-4">🎯</div>
+                  <p className="text-3xl font-display font-bold text-error">
+                    Mode Tueurs à Gages !
+                  </p>
+                  <p className="text-xl text-text-secondary mt-2">
+                    Les joueurs sélectionnent leurs cibles...
+                  </p>
+                </div>
+              ) : gameMode === 'chaud_devant' && bombHolder ? (
+                <div className="bg-warning/20 border-4 border-warning rounded-3xl p-8 animate-pulse relative z-10">
+                  <div className="text-6xl mb-4">💣</div>
+                  <p className="text-2xl font-display font-bold text-warning">
+                    {bombHolder} a la bombe !
+                  </p>
+                </div>
+              ) : gameMode === 'questions_rafale' && hints.length > 0 ? (
+                <div className="w-full max-w-4xl space-y-4 relative z-10">
+                  <div className="bg-success/20 border-2 border-success/30 rounded-3xl p-6">
+                    <h3 className="text-3xl font-display font-bold text-success text-center flex items-center justify-center gap-3">
+                      <span className="text-5xl">💡</span>
+                      <span>Indices</span>
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {hints.map((hint, index) => {
+                      const isVisible = index <= currentHintIndex
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            'relative rounded-2xl p-6 border-2 transition-all duration-500',
+                            isVisible ? 'bg-success/20 border-success' : 'bg-bg-dark border-border opacity-40'
+                          )}
+                        >
+                          <div className={cn(
+                            'absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold',
+                            isVisible ? 'bg-success text-white' : 'bg-border text-text-secondary'
+                          )}>
+                            {index + 1}
+                          </div>
+                          {isVisible ? (
+                            <p className="text-xl font-semibold text-center pt-4">{hint}</p>
+                          ) : (
+                            <div className="text-center pt-4">
+                              <div className="text-4xl">🔒</div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-2xl text-text-secondary relative z-10">Qui trouvera en premier ?</p>
+              )}
             </div>
           )}
 
