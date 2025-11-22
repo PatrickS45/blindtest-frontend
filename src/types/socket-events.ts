@@ -19,7 +19,13 @@ import {
 
 export interface ClientToServerEvents {
   // Game Management
-  create_game: (data?: { mode: GameMode }) => void
+  create_game: (data?: {
+    mode: GameMode
+    config?: {
+      numberOfRounds?: number
+      randomStart?: boolean
+    }
+  }) => void
   join_game: (data: { roomCode: string; playerName: string }) => void
   leave_game: (data: { roomCode: string }) => void
 
