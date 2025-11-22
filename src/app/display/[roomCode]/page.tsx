@@ -151,7 +151,12 @@ export default function DisplayTV() {
     })
 
     socket.on('round_result', (data: any) => {
-      console.log('📊 Round result received:', data)
+      console.log('📊 Round result received:', JSON.stringify(data, null, 2))
+
+      // Check for correct answer (support both formats)
+      const isCorrect = data.isCorrect ?? data.correct ?? false
+      console.log('🔍 isCorrect value:', isCorrect, '(from data.isCorrect:', data.isCorrect, 'or data.correct:', data.correct, ')')
+
       setResult(data)
       setGameStatus('result')
       setBuzzedPlayer(null)
@@ -160,24 +165,29 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
-      // Check for correct answer (support both 'correct' and 'isCorrect' from backend)
-      const isCorrect = data.isCorrect ?? data.correct ?? false
-
       // Trigger animations and sound effects based on result
       if (isCorrect) {
         console.log('✅ Correct answer - playing confetti and sound')
         fireConfetti()
         // Play correct sound
-        const correctSound = new Audio('/sounds/correct_1.mp3')
-        correctSound.volume = 0.5
-        correctSound.play().catch(err => console.log('Sound play error:', err))
+        try {
+          const correctSound = new Audio('/sounds/correct_1.mp3')
+          correctSound.volume = 0.5
+          correctSound.play().catch(err => console.error('❌ Correct sound error:', err))
+        } catch (err) {
+          console.error('❌ Failed to create correct sound:', err)
+        }
       } else {
         console.log('❌ Wrong answer - playing shake and sound')
         triggerShake()
         // Play wrong sound
-        const wrongSound = new Audio('/sounds/wrong_1.mp3')
-        wrongSound.volume = 0.5
-        wrongSound.play().catch(err => console.log('Sound play error:', err))
+        try {
+          const wrongSound = new Audio('/sounds/wrong_1.mp3')
+          wrongSound.volume = 0.5
+          wrongSound.play().catch(err => console.error('❌ Wrong sound error:', err))
+        } catch (err) {
+          console.error('❌ Failed to create wrong sound:', err)
+        }
       }
 
       setTimeout(() => {
@@ -187,9 +197,13 @@ export default function DisplayTV() {
     })
 
     socket.on('round_skipped' as any, (data: any) => {
+      console.log('⏭️ Round skipped received:', JSON.stringify(data, null, 2))
+
       setResult({
         isCorrect: false,
+        correct: false,
         correctAnswer: data.answer,
+        answer: data.answer,  // Support both formats
         message: "Personne n'a trouvé !",
       })
       setGameStatus('result')
@@ -202,9 +216,13 @@ export default function DisplayTV() {
       triggerShake()
 
       // Play timeout sound
-      const timeoutSound = new Audio('/sounds/timeout_1.mp3')
-      timeoutSound.volume = 0.5
-      timeoutSound.play().catch(err => console.log('Sound play error:', err))
+      try {
+        const timeoutSound = new Audio('/sounds/timeout_1.mp3')
+        timeoutSound.volume = 0.5
+        timeoutSound.play().catch(err => console.error('❌ Timeout sound error:', err))
+      } catch (err) {
+        console.error('❌ Failed to create timeout sound:', err)
+      }
 
       setTimeout(() => {
         setGameStatus('waiting')
@@ -453,6 +471,14 @@ export default function DisplayTV() {
             const playerName = result.playerName ?? result.player?.name
             const points = result.pointsAwarded ?? result.points
             const answer = result.correctAnswer ?? result.answer
+
+            console.log('🖼️ Rendering result:', {
+              isCorrect,
+              playerName,
+              points,
+              answer,
+              rawResult: result
+            })
 
             return (
               <div
