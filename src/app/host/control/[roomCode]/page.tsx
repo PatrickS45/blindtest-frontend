@@ -99,6 +99,7 @@ export default function HostControl() {
     })
 
     socket.on('buzz_locked', (data: BuzzedPlayer) => {
+      console.log('⚡ Buzz locked received:', data)
       setBuzzedPlayer(data)
       setGameStatus('buzzed')
 
@@ -115,6 +116,7 @@ export default function HostControl() {
     })
 
     socket.on('round_result', (data: any) => {
+      console.log('📊 Round result received:', data)
       setPlayers(data.leaderboard)
       setBuzzedPlayer(null)
       setCurrentTrack(null)
@@ -128,10 +130,24 @@ export default function HostControl() {
     })
 
     socket.on('wrong_answer_continue', (data: any) => {
-      console.log('❌ Wrong answer, continuing play')
+      console.log('❌ Wrong answer, continuing play - gameStatus back to playing')
       setBuzzedPlayer(null)
       setGameStatus('playing')
       // Resume audio handled by resume_audio event
+    })
+
+    socket.on('round_skipped', (data: any) => {
+      console.log('⏭️ Round skipped:', data)
+      setPlayers(data.leaderboard)
+      setBuzzedPlayer(null)
+      setCurrentTrack(null)
+      setGameStatus('waiting')
+
+      // Stop audio
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
     })
 
     return () => {
@@ -143,6 +159,7 @@ export default function HostControl() {
       socket.off('round_result')
       socket.off('resume_audio')
       socket.off('wrong_answer_continue')
+      socket.off('round_skipped')
     }
   }, [socket])
 

@@ -147,6 +147,7 @@ export default function DisplayTV() {
     })
 
     socket.on('round_result', (data: any) => {
+      console.log('📊 Round result received:', data)
       setResult(data)
       setGameStatus('result')
       setBuzzedPlayer(null)
@@ -155,14 +156,19 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
+      // Check for correct answer (support both 'correct' and 'isCorrect' from backend)
+      const isCorrect = data.isCorrect ?? data.correct ?? false
+
       // Trigger animations and sound effects based on result
-      if (data.isCorrect) {
+      if (isCorrect) {
+        console.log('✅ Correct answer - playing confetti and sound')
         fireConfetti()
         // Play correct sound
         const correctSound = new Audio('/sounds/correct_1.mp3')
         correctSound.volume = 0.5
         correctSound.play().catch(err => console.log('Sound play error:', err))
       } else {
+        console.log('❌ Wrong answer - playing shake and sound')
         triggerShake()
         // Play wrong sound
         const wrongSound = new Audio('/sounds/wrong_1.mp3')
@@ -438,39 +444,46 @@ export default function DisplayTV() {
           )}
 
           {/* Result State */}
-          {gameStatus === 'result' && result && (
-            <div
-              className={cn(
-                'text-center animate-fade-in',
-                result.isCorrect ? 'text-success' : 'text-error'
-              )}
-            >
-              <div className="text-9xl mb-6 animate-bounce">
-                {result.isCorrect ? '🎉' : result.message ? '😔' : '😢'}
-              </div>
-              <h1 className="text-hero font-display font-bold mb-6">
-                {result.isCorrect ? 'Bravo !' : result.message ? result.message : 'Dommage !'}
-              </h1>
+          {gameStatus === 'result' && result && (() => {
+            const isCorrect = result.isCorrect ?? result.correct ?? false
+            const playerName = result.playerName ?? result.player?.name
+            const points = result.pointsAwarded ?? result.points
+            const answer = result.correctAnswer ?? result.answer
 
-              {result.isCorrect && result.playerName && (
-                <div className="text-3xl mb-8">
-                  <strong>{result.playerName}</strong> gagne {result.pointsAwarded} points !
+            return (
+              <div
+                className={cn(
+                  'text-center animate-fade-in',
+                  isCorrect ? 'text-success' : 'text-error'
+                )}
+              >
+                <div className="text-9xl mb-6 animate-bounce">
+                  {isCorrect ? '🎉' : result.message ? '😔' : '😢'}
                 </div>
-              )}
+                <h1 className="text-hero font-display font-bold mb-6">
+                  {isCorrect ? 'Bravo !' : result.message ? result.message : 'Dommage !'}
+                </h1>
 
-              {!result.isCorrect && result.message && (
-                <div className="text-3xl mb-8 text-warning">
-                  ⏰ Temps écoulé - Aucun joueur n'a buzzé
+                {isCorrect && playerName && (
+                  <div className="text-3xl mb-8">
+                    <strong>{playerName}</strong> gagne {points} points !
+                  </div>
+                )}
+
+                {!isCorrect && result.message && (
+                  <div className="text-3xl mb-8 text-warning">
+                    ⏰ Temps écoulé - Aucun joueur n'a buzzé
+                  </div>
+                )}
+
+                <div className="bg-bg-card rounded-3xl p-12 inline-block">
+                  <div className="text-8xl mb-6">🎵</div>
+                  <h2 className="text-2xl text-text-secondary mb-4">La réponse était :</h2>
+                  <p className="text-4xl font-display font-bold">{answer}</p>
                 </div>
-              )}
-
-              <div className="bg-bg-card rounded-3xl p-12 inline-block">
-                <div className="text-8xl mb-6">🎵</div>
-                <h2 className="text-2xl text-text-secondary mb-4">La réponse était :</h2>
-                <p className="text-4xl font-display font-bold">{result.correctAnswer}</p>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Finished State - Final Results */}
           {gameStatus === 'finished' && finalResults && (
