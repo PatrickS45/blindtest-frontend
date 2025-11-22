@@ -100,6 +100,15 @@ export default function Player() {
       }
     })
 
+    socket.on('player_joined', (data: any) => {
+      console.log('👥 Player joined, updating players list')
+      // Initialize my score from the players list
+      const myPlayer = data.players?.find((p: any) => p.name === playerName)
+      if (myPlayer) {
+        setMyScore(myPlayer.score || 0)
+      }
+    })
+
     socket.on('buzz_locked', (data: any) => {
       console.log('⚡ Buzz locked:', data.playerName, 'position:', data.position)
       setCanBuzz(false)
@@ -151,9 +160,10 @@ export default function Player() {
       setBuzzedPlayer('')
       setAnswerTimer(0)
 
-      // Update my score if it was me
-      if (data.playerName === playerName) {
-        setMyScore((prev) => prev + data.points)
+      // Update my score from leaderboard
+      const myPlayer = data.leaderboard?.find((p: any) => p.name === playerName)
+      if (myPlayer) {
+        setMyScore(myPlayer.score)
       }
     })
 
@@ -184,6 +194,7 @@ export default function Player() {
 
     return () => {
       socket.off('round_started')
+      socket.off('player_joined')
       socket.off('buzz_locked')
       socket.off('timeout_warning')
       socket.off('round_result')
