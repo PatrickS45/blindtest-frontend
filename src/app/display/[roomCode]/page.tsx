@@ -15,10 +15,14 @@ interface BuzzedPlayer {
 }
 
 interface RoundResult {
-  isCorrect: boolean
+  isCorrect?: boolean
+  correct?: boolean  // Support backend format
   playerName?: string
-  correctAnswer: string
+  player?: { name: string }  // Support backend format
+  correctAnswer?: string
+  answer?: string  // Support backend format
   pointsAwarded?: number
+  points?: number  // Support backend format
   message?: string
 }
 
