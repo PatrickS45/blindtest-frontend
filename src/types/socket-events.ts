@@ -215,6 +215,17 @@ export interface ServerToClientEvents {
     hint: string
     bonusPointsLeft: number
   }) => void
+
+  bomb_holder_changed: (data: {
+    bombHolder: string
+    timeLeft: number
+  }) => void
+
+  game_finished: (data: {
+    leaderboard: Player[]
+    totalRounds: number
+    winner?: Player
+  }) => void
 }
 
 // ==========================================
