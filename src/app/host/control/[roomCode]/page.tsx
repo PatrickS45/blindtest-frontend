@@ -23,6 +23,7 @@ interface TrackData {
 
 interface BuzzedPlayer {
   playerName: string
+  playerId: string
   position?: number
 }
 
@@ -126,6 +127,13 @@ export default function HostControl() {
       }
     })
 
+    socket.on('wrong_answer_continue', (data: any) => {
+      console.log('❌ Wrong answer, continuing play')
+      setBuzzedPlayer(null)
+      setGameStatus('playing')
+      // Resume audio handled by resume_audio event
+    })
+
     return () => {
       socket.off('player_joined')
       socket.off('player_left')
@@ -134,6 +142,7 @@ export default function HostControl() {
       socket.off('buzz_locked')
       socket.off('round_result')
       socket.off('resume_audio')
+      socket.off('wrong_answer_continue')
     }
   }, [socket])
 
@@ -180,8 +189,12 @@ export default function HostControl() {
   }
 
   const handleValidateAnswer = (isCorrect: boolean) => {
-    if (!socket) return
-    socket.emit('validate_answer', { roomCode, isCorrect })
+    if (!socket || !buzzedPlayer) return
+    socket.emit('validate_answer', {
+      roomCode,
+      playerId: buzzedPlayer.playerId,
+      isCorrect
+    })
   }
 
   const handleSkipTrack = () => {

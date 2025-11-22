@@ -26,8 +26,10 @@ export function useSocket(): UseSocketReturn {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      timeout: 10000,
+      reconnectionAttempts: 10,
+      timeout: 20000,
+      pingTimeout: 60000,
+      pingInterval: 25000,
     })
 
     // Connection handlers
@@ -60,9 +62,25 @@ export function useSocket(): UseSocketReturn {
 
     setSocket(socketInstance)
 
+    // Page Visibility API - Handle mobile sleep mode
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📱 Page became visible, checking connection...')
+        if (!socketInstance.connected) {
+          console.log('🔄 Reconnecting socket after wake...')
+          socketInstance.connect()
+        }
+      } else {
+        console.log('📱 Page hidden (mobile may sleep)')
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     // Cleanup on unmount
     return () => {
       console.log('🔌 Disconnecting socket...')
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       socketInstance.disconnect()
     }
   }, [])

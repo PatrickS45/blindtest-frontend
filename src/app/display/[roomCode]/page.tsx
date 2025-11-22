@@ -15,10 +15,10 @@ interface BuzzedPlayer {
 }
 
 interface RoundResult {
-  correct: boolean
-  player?: { name: string }
-  answer: string
-  points?: number
+  isCorrect: boolean
+  playerName?: string
+  correctAnswer: string
+  pointsAwarded?: number
   message?: string
 }
 
@@ -155,11 +155,19 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
-      // Trigger animations based on result
-      if (data.correct) {
+      // Trigger animations and sound effects based on result
+      if (data.isCorrect) {
         fireConfetti()
+        // Play correct sound
+        const correctSound = new Audio('/sounds/correct_1.mp3')
+        correctSound.volume = 0.5
+        correctSound.play().catch(err => console.log('Sound play error:', err))
       } else {
         triggerShake()
+        // Play wrong sound
+        const wrongSound = new Audio('/sounds/wrong_1.mp3')
+        wrongSound.volume = 0.5
+        wrongSound.play().catch(err => console.log('Sound play error:', err))
       }
 
       setTimeout(() => {
@@ -170,8 +178,8 @@ export default function DisplayTV() {
 
     socket.on('round_skipped' as any, (data: any) => {
       setResult({
-        correct: false,
-        answer: data.answer,
+        isCorrect: false,
+        correctAnswer: data.answer,
         message: "Personne n'a trouvé !",
       })
       setGameStatus('result')
@@ -182,6 +190,11 @@ export default function DisplayTV() {
 
       // Trigger shake for skipped round
       triggerShake()
+
+      // Play timeout sound
+      const timeoutSound = new Audio('/sounds/timeout_1.mp3')
+      timeoutSound.volume = 0.5
+      timeoutSound.play().catch(err => console.log('Sound play error:', err))
 
       setTimeout(() => {
         setGameStatus('waiting')
@@ -429,23 +442,23 @@ export default function DisplayTV() {
             <div
               className={cn(
                 'text-center animate-fade-in',
-                result.correct ? 'text-success' : 'text-error'
+                result.isCorrect ? 'text-success' : 'text-error'
               )}
             >
               <div className="text-9xl mb-6 animate-bounce">
-                {result.correct ? '🎉' : result.message ? '😔' : '😢'}
+                {result.isCorrect ? '🎉' : result.message ? '😔' : '😢'}
               </div>
               <h1 className="text-hero font-display font-bold mb-6">
-                {result.correct ? 'Bravo !' : result.message ? result.message : 'Dommage !'}
+                {result.isCorrect ? 'Bravo !' : result.message ? result.message : 'Dommage !'}
               </h1>
 
-              {result.correct && result.player && (
+              {result.isCorrect && result.playerName && (
                 <div className="text-3xl mb-8">
-                  <strong>{result.player.name}</strong> gagne {result.points} points !
+                  <strong>{result.playerName}</strong> gagne {result.pointsAwarded} points !
                 </div>
               )}
 
-              {!result.correct && result.message && (
+              {!result.isCorrect && result.message && (
                 <div className="text-3xl mb-8 text-warning">
                   ⏰ Temps écoulé - Aucun joueur n'a buzzé
                 </div>
@@ -454,7 +467,7 @@ export default function DisplayTV() {
               <div className="bg-bg-card rounded-3xl p-12 inline-block">
                 <div className="text-8xl mb-6">🎵</div>
                 <h2 className="text-2xl text-text-secondary mb-4">La réponse était :</h2>
-                <p className="text-4xl font-display font-bold">{result.answer}</p>
+                <p className="text-4xl font-display font-bold">{result.correctAnswer}</p>
               </div>
             </div>
           )}
