@@ -104,7 +104,10 @@ export interface ServerToClientEvents {
     state: GameState
   }) => void
 
-  round_skipped: () => void
+  round_skipped: (data: {
+    answer: string
+    leaderboard: Player[]
+  }) => void
 
   // Buzz Events
   buzz_locked: (data: BuzzData) => void
