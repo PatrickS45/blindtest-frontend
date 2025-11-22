@@ -28,8 +28,6 @@ export function useSocket(): UseSocketReturn {
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
       timeout: 20000,
-      pingTimeout: 60000,
-      pingInterval: 25000,
     })
 
     // Connection handlers
