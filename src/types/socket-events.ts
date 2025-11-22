@@ -49,6 +49,7 @@ export interface ClientToServerEvents {
   // Host Validation
   validate_answer: (data: {
     roomCode: string
+    playerId: string
     isCorrect: boolean
   }) => void
   resume_audio: (data: { roomCode: string }) => void
