@@ -44,6 +44,7 @@ export default function HostControl() {
   const [gameDuration, setGameDuration] = useState<number>(0)
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
+  const [wrongAnswerFeedback, setWrongAnswerFeedback] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -130,10 +131,19 @@ export default function HostControl() {
     })
 
     socket.on('wrong_answer_continue', (data: any) => {
-      console.log('❌ Wrong answer, continuing play - gameStatus back to playing')
-      setBuzzedPlayer(null)
-      setGameStatus('playing')
-      // Resume audio handled by resume_audio event
+      console.log('❌ Wrong answer, continuing play - showing feedback for 2s')
+
+      // Show wrong answer feedback
+      setWrongAnswerFeedback(true)
+
+      // After 2 seconds, go back to playing state
+      setTimeout(() => {
+        setWrongAnswerFeedback(false)
+        setBuzzedPlayer(null)
+        setGameStatus('playing')
+      }, 2000)
+
+      // Resume audio handled by resume_audio event from backend
     })
 
     socket.on('round_skipped', (data: any) => {
@@ -384,8 +394,19 @@ export default function HostControl() {
           </div>
         )}
 
+        {/* Wrong Answer Feedback */}
+        {wrongAnswerFeedback && buzzedPlayer && (
+          <div className="bg-gradient-to-br from-error/20 to-error/10 rounded-3xl p-6 border-4 border-error animate-shake">
+            <h2 className="font-display text-3xl font-semibold mb-4 text-center text-error">❌ MAUVAISE RÉPONSE !</h2>
+            <div className="text-center">
+              <div className="text-xl font-semibold mb-2">{buzzedPlayer.playerName}</div>
+              <p className="text-text-secondary">La musique reprend dans un instant...</p>
+            </div>
+          </div>
+        )}
+
         {/* Buzz Alert */}
-        {gameStatus === 'buzzed' && buzzedPlayer && currentTrack && (
+        {gameStatus === 'buzzed' && buzzedPlayer && currentTrack && !wrongAnswerFeedback && (
           <div className="bg-gradient-to-br from-primary/20 to-primary/10 rounded-3xl p-6 border-4 border-primary animate-pulse">
             <h2 className="font-display text-2xl font-semibold mb-6 text-center">⚡ BUZZER ACTIVÉ !</h2>
 

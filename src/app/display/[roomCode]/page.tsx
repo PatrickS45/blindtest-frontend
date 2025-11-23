@@ -158,6 +158,20 @@ export default function DisplayTV() {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
     })
 
+    socket.on('resume_audio', () => {
+      console.log('▶️ [RESUME_AUDIO] Resuming music playback')
+      if (audioRef.current) {
+        audioRef.current.play().catch((err) => console.error('❌ Resume audio error:', err))
+      }
+      // Restart timer if it was paused
+      if (timeLeft !== null && timeLeft > 0) {
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = setInterval(() => {
+          setTimeLeft((prev) => (prev === null ? null : prev - 0.1))
+        }, 100)
+      }
+    })
+
     socket.on('wrong_answer_continue', (data: any) => {
       console.log('❌ [WRONG_ANSWER_CONTINUE] Wrong answer - player will continue', JSON.stringify(data, null, 2))
 
@@ -306,6 +320,7 @@ export default function DisplayTV() {
       socket.off('play_track')
       socket.off('stop_music')
       socket.off('buzz_locked')
+      socket.off('resume_audio')
       socket.off('wrong_answer_continue')
       socket.off('round_result')
       socket.off('round_skipped')
