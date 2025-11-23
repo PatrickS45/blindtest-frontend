@@ -97,6 +97,14 @@ export default function DisplayTV() {
   useEffect(() => {
     if (!socket) return
 
+    // Log ALL incoming events for debugging
+    const originalOn = socket.on.bind(socket)
+    const originalEmit = socket.emit.bind(socket)
+
+    socket.onAny((eventName: string, ...args: any[]) => {
+      console.log(`🔔 [Socket Event] ${eventName}:`, JSON.stringify(args, null, 2))
+    })
+
     socket.on('player_joined', (data: any) => setPlayers(data.players || []))
     socket.on('player_left', (data: any) => setPlayers(data.players || []))
 
@@ -150,12 +158,47 @@ export default function DisplayTV() {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
     })
 
+    socket.on('wrong_answer_continue', (data: any) => {
+      console.log('❌ [WRONG_ANSWER_CONTINUE] Wrong answer - player will continue', JSON.stringify(data, null, 2))
+
+      // Show wrong answer feedback briefly
+      setResult({
+        isCorrect: false,
+        correct: false,
+        playerName: buzzedPlayer?.playerName,
+        message: 'Mauvaise réponse !',
+      })
+      setGameStatus('result')
+
+      // Trigger shake and wrong sound
+      triggerShake()
+      try {
+        const wrongSound = new Audio('/sounds/wrong_1.mp3')
+        wrongSound.volume = 0.5
+        wrongSound.play().catch(err => console.error('❌ Wrong sound error:', err))
+      } catch (err) {
+        console.error('❌ Failed to create wrong sound:', err)
+      }
+
+      // After 2 seconds, go back to playing state
+      setTimeout(() => {
+        setGameStatus('playing')
+        setResult(null)
+        setBuzzedPlayer(null)
+      }, 2000)
+    })
+
     socket.on('round_result', (data: any) => {
-      console.log('📊 Round result received:', JSON.stringify(data, null, 2))
+      console.log('📊 [ROUND_RESULT HANDLER] Entering round_result handler')
+      console.log('📊 [ROUND_RESULT HANDLER] Raw data:', JSON.stringify(data, null, 2))
+      console.log('📊 [ROUND_RESULT HANDLER] Data keys:', Object.keys(data))
 
       // Check for correct answer (support both formats)
       const isCorrect = data.isCorrect ?? data.correct ?? false
-      console.log('🔍 isCorrect value:', isCorrect, '(from data.isCorrect:', data.isCorrect, 'or data.correct:', data.correct, ')')
+      console.log('🔍 [ROUND_RESULT HANDLER] isCorrect value:', isCorrect, '(from data.isCorrect:', data.isCorrect, 'or data.correct:', data.correct, ')')
+      console.log('🔍 [ROUND_RESULT HANDLER] Player:', data.playerName || data.player?.name || 'NONE')
+      console.log('🔍 [ROUND_RESULT HANDLER] Points:', data.pointsAwarded || data.points || 'NONE')
+      console.log('🔍 [ROUND_RESULT HANDLER] Answer:', data.correctAnswer || data.answer || 'NONE')
 
       setResult(data)
       setGameStatus('result')
@@ -256,12 +299,14 @@ export default function DisplayTV() {
     })
 
     return () => {
+      socket.offAny()  // Remove the catch-all listener
       socket.off('player_joined')
       socket.off('player_left')
       socket.off('round_started')
       socket.off('play_track')
       socket.off('stop_music')
       socket.off('buzz_locked')
+      socket.off('wrong_answer_continue')
       socket.off('round_result')
       socket.off('round_skipped')
       socket.off('bomb_holder_changed')
