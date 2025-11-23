@@ -126,6 +126,12 @@ export default function DisplayTV() {
     })
 
     socket.on('play_track', (data: any) => {
+      console.log('🎵 [PLAY_TRACK] Track data:', {
+        previewUrl: data.previewUrl,
+        startTime: data.startTime,
+        timerDuration: data.timerDuration
+      })
+
       setGameStatus('playing')
       setBuzzedPlayer(null)
       setResult(null)
@@ -136,7 +142,18 @@ export default function DisplayTV() {
       if (audioRef.current) audioRef.current.pause()
       const audio = new Audio(data.previewUrl)
       audio.volume = data.volume || 0.7
-      audio.play().catch((err) => console.error('Audio error:', err))
+
+      // If startTime is provided (random start), seek to that position
+      if (data.startTime && data.startTime > 0) {
+        audio.addEventListener('loadedmetadata', () => {
+          audio.currentTime = data.startTime
+          console.log('🎲 [PLAY_TRACK] Audio starting at', data.startTime, 'seconds (random start)')
+        }, { once: true })
+      } else {
+        console.log('▶️ [PLAY_TRACK] Audio starting from beginning')
+      }
+
+      audio.play().catch((err) => console.error('❌ Audio error:', err))
       audioRef.current = audio
 
       // Start timer
