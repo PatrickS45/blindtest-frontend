@@ -44,8 +44,30 @@ export default function HostControl() {
   const [gameDuration, setGameDuration] = useState<number>(0)
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
+  const [wrongAnswerFeedback, setWrongAnswerFeedback] = useState(false)
+  const [isMuted, setIsMuted] = useState(() => {
+    // Load mute state from localStorage
+    if (typeof window !== 'undefined') {
+      const savedMute = localStorage.getItem('blindtest_host_muted')
+      return savedMute === 'true'
+    }
+    return false
+  })
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Toggle mute function
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const newMute = !prev
+      localStorage.setItem('blindtest_host_muted', String(newMute))
+      // Apply to current audio if playing
+      if (audioRef.current) {
+        audioRef.current.volume = newMute ? 0 : 0.7
+      }
+      return newMute
+    })
+  }
 
   // Join as host
   useEffect(() => {
@@ -82,6 +104,7 @@ export default function HostControl() {
 
       // Play audio
       const audio = new Audio(data.previewUrl)
+      audio.volume = isMuted ? 0 : 0.7  // Apply mute state
 
       // Si un startTime est fourni, attendre que l'audio soit chargé puis seek
       if (data.startTime && data.startTime > 0) {
@@ -130,10 +153,19 @@ export default function HostControl() {
     })
 
     socket.on('wrong_answer_continue', (data: any) => {
-      console.log('❌ Wrong answer, continuing play - gameStatus back to playing')
-      setBuzzedPlayer(null)
-      setGameStatus('playing')
-      // Resume audio handled by resume_audio event
+      console.log('❌ Wrong answer, continuing play - showing feedback for 2s')
+
+      // Show wrong answer feedback
+      setWrongAnswerFeedback(true)
+
+      // After 2 seconds, go back to playing state
+      setTimeout(() => {
+        setWrongAnswerFeedback(false)
+        setBuzzedPlayer(null)
+        setGameStatus('playing')
+      }, 2000)
+
+      // Resume audio handled by resume_audio event from backend
     })
 
     socket.on('round_skipped', (data: any) => {
@@ -236,12 +268,29 @@ export default function HostControl() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-sm text-text-secondary">
-            <div className="flex items-center gap-2">
-              <div className={cn('w-2 h-2 rounded-full', isConnected ? 'bg-success' : 'bg-error')} />
-              <span>{isConnected ? 'En ligne' : 'Déconnecté'}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6 text-sm text-text-secondary">
+              <div className="flex items-center gap-2">
+                <div className={cn('w-2 h-2 rounded-full', isConnected ? 'bg-success' : 'bg-error')} />
+                <span>{isConnected ? 'En ligne' : 'Déconnecté'}</span>
+              </div>
+              <div>👥 {players.length} joueur{players.length > 1 ? 's' : ''}</div>
             </div>
-            <div>👥 {players.length} joueur{players.length > 1 ? 's' : ''}</div>
+
+            {/* Mute Toggle Button */}
+            <button
+              onClick={toggleMute}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all',
+                isMuted
+                  ? 'bg-error/20 text-error border-2 border-error/50 hover:bg-error/30'
+                  : 'bg-success/20 text-success border-2 border-success/50 hover:bg-success/30'
+              )}
+              title={isMuted ? 'Son coupé - Cliquer pour activer' : 'Son activé - Cliquer pour couper'}
+            >
+              <span className="text-xl">{isMuted ? '🔇' : '🔊'}</span>
+              <span className="text-sm">{isMuted ? 'Muet' : 'Son ON'}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -384,8 +433,19 @@ export default function HostControl() {
           </div>
         )}
 
+        {/* Wrong Answer Feedback */}
+        {wrongAnswerFeedback && buzzedPlayer && (
+          <div className="bg-gradient-to-br from-error/20 to-error/10 rounded-3xl p-6 border-4 border-error animate-shake">
+            <h2 className="font-display text-3xl font-semibold mb-4 text-center text-error">❌ MAUVAISE RÉPONSE !</h2>
+            <div className="text-center">
+              <div className="text-xl font-semibold mb-2">{buzzedPlayer.playerName}</div>
+              <p className="text-text-secondary">La musique reprend dans un instant...</p>
+            </div>
+          </div>
+        )}
+
         {/* Buzz Alert */}
-        {gameStatus === 'buzzed' && buzzedPlayer && currentTrack && (
+        {gameStatus === 'buzzed' && buzzedPlayer && currentTrack && !wrongAnswerFeedback && (
           <div className="bg-gradient-to-br from-primary/20 to-primary/10 rounded-3xl p-6 border-4 border-primary animate-pulse">
             <h2 className="font-display text-2xl font-semibold mb-6 text-center">⚡ BUZZER ACTIVÉ !</h2>
 
