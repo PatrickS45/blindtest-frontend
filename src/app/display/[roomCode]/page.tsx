@@ -7,6 +7,7 @@ import { Leaderboard } from '@/components/ui/Leaderboard'
 import { Player } from '@/types/game'
 import { cn } from '@/lib/utils'
 import confetti from 'canvas-confetti'
+import { QRCodeCanvas } from 'qrcode.react'
 
 interface BuzzedPlayer {
   playerName: string
@@ -381,13 +382,32 @@ export default function DisplayTV() {
         <div className="flex-1 flex items-center justify-center p-12">
           {/* Waiting State */}
           {gameStatus === 'waiting' && (
-            <div className="text-center animate-fade-in">
+            <div className="text-center animate-fade-in space-y-12">
               <div className="text-9xl mb-8 animate-bounce">🎵</div>
               <h1 className="text-hero font-display font-bold mb-4">En attente...</h1>
-              <p className="text-title text-text-secondary">
+              <p className="text-title text-text-secondary mb-12">
                 {players.length} joueur{players.length > 1 ? 's' : ''} connecté
                 {players.length > 1 ? 's' : ''}
               </p>
+
+              {/* QR Code for players to join */}
+              <div className="inline-block bg-white p-8 rounded-3xl shadow-2xl">
+                <QRCodeCanvas
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/player/${roomCode}`}
+                  size={300}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              <div className="max-w-2xl mx-auto">
+                <p className="text-2xl font-semibold text-primary mb-2">📱 Scannez pour rejoindre</p>
+                <p className="text-xl text-text-secondary">
+                  Ou rendez-vous sur <span className="font-mono font-bold text-primary">{typeof window !== 'undefined' ? window.location.host : ''}</span>
+                </p>
+                <p className="text-lg text-text-secondary mt-2">
+                  Code de la salle : <span className="font-mono font-bold text-4xl text-primary">{roomCode}</span>
+                </p>
+              </div>
             </div>
           )}
 
