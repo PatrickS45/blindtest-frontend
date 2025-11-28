@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Leaderboard } from '@/components/ui/Leaderboard'
 import { Player } from '@/types/game'
 import { cn } from '@/lib/utils'
+import { isHostAuthenticated } from '@/lib/auth'
 
 interface Playlist {
   title: string
@@ -68,6 +69,13 @@ export default function HostControl() {
       return newMute
     })
   }
+
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isHostAuthenticated()) {
+      router.push('/host/login')
+    }
+  }, [router])
 
   // Join as host
   useEffect(() => {

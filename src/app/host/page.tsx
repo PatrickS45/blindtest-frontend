@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ModeCard } from '@/components/modes/ModeCard'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import { GAME_MODES } from '@/lib/constants'
 import { GameMode } from '@/types/game'
 import { useSocket } from '@/hooks/useSocket'
 import { cn } from '@/lib/utils'
+import { isHostAuthenticated } from '@/lib/auth'
 
 export default function HostModSelection() {
   const router = useRouter()
@@ -17,6 +18,13 @@ export default function HostModSelection() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [numberOfRounds, setNumberOfRounds] = useState(10)
   const [randomStart, setRandomStart] = useState(true)
+
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isHostAuthenticated()) {
+      router.push('/host/login')
+    }
+  }, [router])
 
   const handleCreateGame = async () => {
     if (!selectedMode || !socket) {
