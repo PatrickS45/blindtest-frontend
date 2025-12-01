@@ -45,12 +45,17 @@ export interface ClientToServerEvents {
   }) => void
   leave_team: (data: {
     roomCode: string
+    playerId?: string
   }) => void
   update_team: (data: {
     roomCode: string
     teamId: string
     teamName?: string
     teamColor?: string
+  }) => void
+  delete_team: (data: {
+    roomCode: string
+    teamId: string
   }) => void
   assign_player_to_team: (data: {
     roomCode: string
