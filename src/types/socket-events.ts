@@ -11,6 +11,8 @@ import {
   BuzzData,
   RoundResult,
   Track,
+  Team,
+  PlayMode,
 } from './game'
 
 // ==========================================
@@ -21,13 +23,40 @@ export interface ClientToServerEvents {
   // Game Management
   create_game: (data?: {
     mode: GameMode
+    playMode?: PlayMode
     config?: {
       numberOfRounds?: number
       randomStart?: boolean
+      numberOfTeams?: number
     }
   }) => void
   join_game: (data: { roomCode: string; playerName: string }) => void
   leave_game: (data: { roomCode: string }) => void
+
+  // Team Management
+  create_team: (data: {
+    roomCode: string
+    teamName: string
+    teamColor: string
+  }) => void
+  join_team: (data: {
+    roomCode: string
+    teamId: string
+  }) => void
+  leave_team: (data: {
+    roomCode: string
+  }) => void
+  update_team: (data: {
+    roomCode: string
+    teamId: string
+    teamName?: string
+    teamColor?: string
+  }) => void
+  assign_player_to_team: (data: {
+    roomCode: string
+    playerId: string
+    teamId: string
+  }) => void
 
   // Host Actions
   join_as_host: (data: { roomCode: string }) => void
@@ -71,16 +100,52 @@ export interface ServerToClientEvents {
     roomCode: string
     hostId: string
     mode: GameMode
+    playMode: PlayMode
   }) => void
 
   game_state: (data: {
     state: GameState
     mode: GameMode
+    playMode: PlayMode
     players: Player[]
+    teams?: Team[]
     currentRound: number
     totalRounds: number
     playlistId?: string
     playlistName?: string
+  }) => void
+
+  // Team Management
+  team_created: (data: {
+    team: Team
+    teams: Team[]
+  }) => void
+
+  team_updated: (data: {
+    team: Team
+    teams: Team[]
+  }) => void
+
+  team_deleted: (data: {
+    teamId: string
+    teams: Team[]
+  }) => void
+
+  player_joined_team: (data: {
+    playerId: string
+    teamId: string
+    team: Team
+    teams: Team[]
+  }) => void
+
+  player_left_team: (data: {
+    playerId: string
+    teamId: string
+    teams: Team[]
+  }) => void
+
+  teams_updated: (data: {
+    teams: Team[]
   }) => void
 
   // Player Management
@@ -168,7 +233,9 @@ export interface ServerToClientEvents {
   // Game End
   game_ended: (data: {
     finalLeaderboard: Player[]
+    teamLeaderboard?: Team[]
     winner: Player
+    winnerTeam?: Team
   }) => void
 
   // Errors
@@ -233,8 +300,10 @@ export interface ServerToClientEvents {
 
   game_finished: (data: {
     leaderboard: Player[]
+    teamLeaderboard?: Team[]
     totalRounds: number
     winner?: Player
+    winnerTeam?: Team
   }) => void
 }
 
