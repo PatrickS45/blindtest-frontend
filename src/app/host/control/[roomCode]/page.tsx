@@ -5,8 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { Button } from '@/components/ui/Button'
 import { Leaderboard } from '@/components/ui/Leaderboard'
-import { Player } from '@/types/game'
+import { TeamLeaderboard } from '@/components/ui/TeamLeaderboard'
+import { TeamManagement } from '@/components/team/TeamManagement'
+import { Player, Team, PlayMode } from '@/types/game'
 import { cn } from '@/lib/utils'
+import { isHostAuthenticated } from '@/lib/auth'
 
 interface Playlist {
   title: string
@@ -34,6 +37,8 @@ export default function HostControl() {
   const { socket, isConnected } = useSocket()
 
   const [players, setPlayers] = useState<Player[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [playMode, setPlayMode] = useState<PlayMode>('solo')
   const [playlistId, setPlaylistId] = useState<string>('')
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [gameStatus, setGameStatus] = useState<'setup' | 'waiting' | 'playing' | 'buzzed'>('setup')
@@ -69,6 +74,13 @@ export default function HostControl() {
     })
   }
 
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isHostAuthenticated()) {
+      router.push('/host/login')
+    }
+  }, [router])
+
   // Join as host
   useEffect(() => {
     if (!socket || !isConnected || !roomCode) return
@@ -82,12 +94,54 @@ export default function HostControl() {
   useEffect(() => {
     if (!socket) return
 
+    // Game state
+    socket.on('game_state', (data: any) => {
+      if (data.playMode) setPlayMode(data.playMode)
+      if (data.teams) setTeams(data.teams)
+      if (data.players) setPlayers(data.players)
+    })
+
     socket.on('player_joined', (data: any) => {
       setPlayers(data.players)
     })
 
     socket.on('player_left', (data: any) => {
       setPlayers(data.players)
+    })
+
+    // Team events
+    socket.on('team_created', (data: any) => {
+      setTeams(data.teams)
+    })
+
+    socket.on('team_updated', (data: any) => {
+      setTeams(data.teams)
+    })
+
+    socket.on('team_deleted', (data: any) => {
+      setTeams(data.teams)
+    })
+
+    socket.on('player_joined_team', (data: any) => {
+      setTeams(data.teams)
+      setPlayers((prev) =>
+        prev.map((p) =>
+          p.id === data.playerId ? { ...p, teamId: data.teamId } : p
+        )
+      )
+    })
+
+    socket.on('player_left_team', (data: any) => {
+      setTeams(data.teams)
+      setPlayers((prev) =>
+        prev.map((p) =>
+          p.id === data.playerId ? { ...p, teamId: undefined } : p
+        )
+      )
+    })
+
+    socket.on('teams_updated', (data: any) => {
+      setTeams(data.teams)
     })
 
     socket.on('round_started', (data: any) => {
@@ -141,6 +195,7 @@ export default function HostControl() {
     socket.on('round_result', (data: any) => {
       console.log('📊 Round result received:', data)
       setPlayers(data.leaderboard)
+      if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
       setBuzzedPlayer(null)
       setCurrentTrack(null)
       setGameStatus('waiting')
@@ -183,8 +238,15 @@ export default function HostControl() {
     })
 
     return () => {
+      socket.off('game_state')
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('team_created')
+      socket.off('team_updated')
+      socket.off('team_deleted')
+      socket.off('player_joined_team')
+      socket.off('player_left_team')
+      socket.off('teams_updated')
       socket.off('round_started')
       socket.off('play_track')
       socket.off('buzz_locked')
@@ -254,6 +316,32 @@ export default function HostControl() {
     setCurrentTrack(null)
     setBuzzedPlayer(null)
     setGameStatus('waiting')
+  }
+
+  // Team management handlers
+  const handleCreateTeam = (teamName: string, teamColor: string) => {
+    if (!socket) return
+    socket.emit('create_team', { roomCode, teamName, teamColor })
+  }
+
+  const handleUpdateTeam = (teamId: string, teamName: string, teamColor?: string) => {
+    if (!socket) return
+    socket.emit('update_team', { roomCode, teamId, teamName, teamColor })
+  }
+
+  const handleDeleteTeam = (teamId: string) => {
+    if (!socket) return
+    socket.emit('delete_team', { roomCode, teamId })
+  }
+
+  const handleAssignPlayer = (playerId: string, teamId: string) => {
+    if (!socket) return
+    socket.emit('assign_player_to_team', { roomCode, playerId, teamId })
+  }
+
+  const handleRemovePlayerFromTeam = (playerId: string) => {
+    if (!socket) return
+    socket.emit('leave_team', { roomCode, playerId })
   }
 
   return (
@@ -505,12 +593,32 @@ export default function HostControl() {
           </div>
         )}
 
-        {/* Players Leaderboard */}
+        {/* Team Management (Team Mode Only) */}
+        {playMode === 'team' && gameStatus === 'waiting' && !playlist && (
+          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
+            <TeamManagement
+              teams={teams}
+              players={players}
+              onCreateTeam={handleCreateTeam}
+              onUpdateTeam={handleUpdateTeam}
+              onDeleteTeam={handleDeleteTeam}
+              onAssignPlayer={handleAssignPlayer}
+              onRemovePlayerFromTeam={handleRemovePlayerFromTeam}
+            />
+          </div>
+        )}
+
+        {/* Leaderboard */}
         <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
           <h2 className="font-display text-xl font-semibold mb-4">
-            👥 Classement ({players.length})
+            {playMode === 'team' ? '🏆 Classement des équipes' : '👥 Classement'}
+            {playMode === 'solo' && ` (${players.length})`}
           </h2>
-          <Leaderboard players={players} compact />
+          {playMode === 'team' ? (
+            <TeamLeaderboard teams={teams} players={players} compact showMembers={false} />
+          ) : (
+            <Leaderboard players={players} compact />
+          )}
         </div>
 
         {/* Quick Actions */}

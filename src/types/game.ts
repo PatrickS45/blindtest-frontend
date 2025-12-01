@@ -24,6 +24,30 @@ export interface ModeConfig {
 }
 
 // ==========================================
+// TEAM
+// ==========================================
+
+export interface Team {
+  id: string
+  name: string
+  color: string
+  score: number // Total team score (sum of members' scores)
+  memberIds: string[] // Player IDs
+  createdAt: Date
+}
+
+export const TEAM_COLORS = [
+  { id: 'red', name: 'Rouge', hex: '#ef4444' },
+  { id: 'blue', name: 'Bleu', hex: '#3b82f6' },
+  { id: 'green', name: 'Vert', hex: '#22c55e' },
+  { id: 'yellow', name: 'Jaune', hex: '#eab308' },
+  { id: 'pink', name: 'Rose', hex: '#ec4899' },
+  { id: 'purple', name: 'Violet', hex: '#a855f7' },
+] as const
+
+export type TeamColorId = typeof TEAM_COLORS[number]['id']
+
+// ==========================================
 // PLAYER
 // ==========================================
 
@@ -34,6 +58,7 @@ export interface Player {
   color: string
   buzzerSound?: number // 1-23
   isConnected: boolean
+  teamId?: string // Optional: ID of the team the player belongs to
 }
 
 // ==========================================
@@ -48,11 +73,15 @@ export type GameState =
   | 'result'      // Showing round result
   | 'ended'       // Game finished
 
+export type PlayMode = 'solo' | 'team'
+
 export interface GameSession {
   roomCode: string
   mode: GameMode
+  playMode: PlayMode // Solo or Team mode
   hostId: string
   players: Player[]
+  teams?: Team[] // Only present in team mode
   state: GameState
   currentRound: number
   totalRounds: number
@@ -120,6 +149,7 @@ export interface RoundResult {
   pointsAwarded: Record<string, number> // playerId -> points
   correctAnswer: string
   leaderboard: Player[]
+  teamLeaderboard?: Team[] // Only present in team mode
 }
 
 // ==========================================

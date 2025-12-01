@@ -1,22 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ModeCard } from '@/components/modes/ModeCard'
 import { Button } from '@/components/ui/Button'
 import { GAME_MODES } from '@/lib/constants'
-import { GameMode } from '@/types/game'
+import { GameMode, PlayMode } from '@/types/game'
 import { useSocket } from '@/hooks/useSocket'
 import { cn } from '@/lib/utils'
+import { isHostAuthenticated } from '@/lib/auth'
 
 export default function HostModSelection() {
   const router = useRouter()
   const { socket, isConnected, error } = useSocket()
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null)
+  const [playMode, setPlayMode] = useState<PlayMode>('solo')
+  const [numberOfTeams, setNumberOfTeams] = useState(2)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [numberOfRounds, setNumberOfRounds] = useState(10)
   const [randomStart, setRandomStart] = useState(true)
+
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isHostAuthenticated()) {
+      router.push('/host/login')
+    }
+  }, [router])
 
   const handleCreateGame = async () => {
     if (!selectedMode || !socket) {
@@ -31,9 +41,11 @@ export default function HostModSelection() {
       // Emit create_game event and wait for response
       socket.emit('create_game', {
         mode: selectedMode,
+        playMode,
         config: {
           numberOfRounds,
-          randomStart
+          randomStart,
+          numberOfTeams: playMode === 'team' ? numberOfTeams : undefined
         }
       })
 
@@ -48,6 +60,7 @@ export default function HostModSelection() {
           JSON.stringify({
             roomCode,
             mode: selectedMode,
+            playMode,
             role: 'host',
             timestamp: new Date().toISOString(),
           })
@@ -108,6 +121,76 @@ export default function HostModSelection() {
             <p className="text-error font-semibold">❌ {error}</p>
           </div>
         )}
+
+        {/* Play Mode Selection: Solo vs Team */}
+        <div className="mb-12 max-w-2xl mx-auto animate-fade-in">
+          <div className="bg-bg-card rounded-3xl p-8 border-2 border-primary/20">
+            <h3 className="font-display text-xl font-semibold mb-6 text-center">
+              👥 Type de partie
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Solo Mode Button */}
+              <button
+                onClick={() => setPlayMode('solo')}
+                className={cn(
+                  'p-6 rounded-2xl border-2 transition-all duration-200',
+                  playMode === 'solo'
+                    ? 'bg-primary/10 border-primary shadow-lg scale-105'
+                    : 'bg-bg-dark border-border hover:border-primary/50'
+                )}
+              >
+                <div className="text-4xl mb-3">🎮</div>
+                <h4 className="font-bold text-lg mb-2">Solo</h4>
+                <p className="text-sm text-text-secondary">
+                  Chaque joueur pour soi
+                </p>
+              </button>
+
+              {/* Team Mode Button */}
+              <button
+                onClick={() => setPlayMode('team')}
+                className={cn(
+                  'p-6 rounded-2xl border-2 transition-all duration-200',
+                  playMode === 'team'
+                    ? 'bg-primary/10 border-primary shadow-lg scale-105'
+                    : 'bg-bg-dark border-border hover:border-primary/50'
+                )}
+              >
+                <div className="text-4xl mb-3">👥</div>
+                <h4 className="font-bold text-lg mb-2">Équipes</h4>
+                <p className="text-sm text-text-secondary">
+                  Jouez en équipe
+                </p>
+              </button>
+            </div>
+
+            {/* Number of Teams Selector (only for team mode) */}
+            {playMode === 'team' && (
+              <div className="animate-fade-in">
+                <div className="flex items-center justify-between mb-3">
+                  <label htmlFor="teams" className="font-semibold text-text-primary">
+                    Nombre d'équipes
+                  </label>
+                  <span className="text-2xl font-bold text-primary">{numberOfTeams}</span>
+                </div>
+                <input
+                  type="range"
+                  id="teams"
+                  min="2"
+                  max="6"
+                  value={numberOfTeams}
+                  onChange={(e) => setNumberOfTeams(Number(e.target.value))}
+                  className="w-full h-2 bg-bg-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between text-xs text-text-secondary mt-1">
+                  <span>2 équipes</span>
+                  <span>6 équipes</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Mode Selection Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">

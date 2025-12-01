@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { useSoundEffect } from '@/hooks/useAudio'
 import { Buzzer } from '@/components/game/Buzzer'
+import { TeamSelector } from '@/components/team/TeamSelector'
+import { Team, PlayMode } from '@/types/game'
 import { cn } from '@/lib/utils'
 
 // Helper to get position badge for Reflexoquiz mode
@@ -27,6 +29,10 @@ export default function Player() {
 
   const [playerName, setPlayerName] = useState('')
   const [joined, setJoined] = useState(false)
+  const [playMode, setPlayMode] = useState<PlayMode>('solo')
+  const [teams, setTeams] = useState<Team[]>([])
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+  const [teamSelected, setTeamSelected] = useState(false)
   const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'locked'>('waiting')
   const [canBuzz, setCanBuzz] = useState(false)
   const [buzzedPlayer, setBuzzedPlayer] = useState('')
@@ -80,9 +86,33 @@ export default function Player() {
     localStorage.setItem('blindtest_player_name', playerName)
   }
 
+  // Join team
+  const handleJoinTeam = () => {
+    if (!socket || !selectedTeamId) return
+
+    console.log('👥 Joining team:', selectedTeamId)
+    socket.emit('join_team', { roomCode, teamId: selectedTeamId })
+    setTeamSelected(true)
+  }
+
   // Socket event listeners
   useEffect(() => {
     if (!socket || !joined) return
+
+    // Game state (for teams)
+    socket.on('game_state', (data: any) => {
+      if (data.playMode) setPlayMode(data.playMode)
+      if (data.teams) setTeams(data.teams)
+    })
+
+    // Team events
+    socket.on('teams_updated', (data: any) => {
+      setTeams(data.teams)
+    })
+
+    socket.on('player_joined_team', (data: any) => {
+      setTeams(data.teams)
+    })
 
     socket.on('round_started', (data: any) => {
       console.log('🎵 Round started', data)
@@ -193,6 +223,9 @@ export default function Player() {
     })
 
     return () => {
+      socket.off('game_state')
+      socket.off('teams_updated')
+      socket.off('player_joined_team')
       socket.off('round_started')
       socket.off('player_joined')
       socket.off('buzz_locked')
@@ -247,6 +280,18 @@ export default function Player() {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Team selection screen (team mode only)
+  if (joined && playMode === 'team' && !teamSelected) {
+    return (
+      <TeamSelector
+        teams={teams}
+        selectedTeamId={selectedTeamId}
+        onSelectTeam={setSelectedTeamId}
+        onConfirm={handleJoinTeam}
+      />
     )
   }
 

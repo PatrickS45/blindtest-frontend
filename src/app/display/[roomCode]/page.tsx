@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { Leaderboard } from '@/components/ui/Leaderboard'
-import { Player } from '@/types/game'
+import { TeamLeaderboard } from '@/components/ui/TeamLeaderboard'
+import { Player, Team, PlayMode } from '@/types/game'
 import { cn } from '@/lib/utils'
 import confetti from 'canvas-confetti'
 import { QRCodeCanvas } from 'qrcode.react'
@@ -33,6 +34,8 @@ export default function DisplayTV() {
   const { socket } = useSocket()
 
   const [players, setPlayers] = useState<Player[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [playMode, setPlayMode] = useState<PlayMode>('solo')
   const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'buzzed' | 'result' | 'finished'>('waiting')
   const [buzzedPlayer, setBuzzedPlayer] = useState<BuzzedPlayer | null>(null)
   const [result, setResult] = useState<RoundResult | null>(null)
@@ -43,7 +46,7 @@ export default function DisplayTV() {
   const [hints, setHints] = useState<string[]>([])
   const [currentHintIndex, setCurrentHintIndex] = useState(-1)
   const [isShaking, setIsShaking] = useState(false)
-  const [finalResults, setFinalResults] = useState<{ leaderboard: Player[]; totalRounds: number } | null>(null)
+  const [finalResults, setFinalResults] = useState<{ leaderboard: Player[]; teamLeaderboard?: Team[]; totalRounds: number } | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -106,8 +109,15 @@ export default function DisplayTV() {
       console.log(`🔔 [Socket Event] ${eventName}:`, JSON.stringify(args, null, 2))
     })
 
+    socket.on('game_state', (data: any) => {
+      if (data.playMode) setPlayMode(data.playMode)
+      if (data.teams) setTeams(data.teams)
+      if (data.players) setPlayers(data.players)
+    })
+
     socket.on('player_joined', (data: any) => setPlayers(data.players || []))
     socket.on('player_left', (data: any) => setPlayers(data.players || []))
+    socket.on('teams_updated', (data: any) => setTeams(data.teams || []))
 
     socket.on('round_started', (data: any) => {
       // Capture game mode
@@ -236,6 +246,7 @@ export default function DisplayTV() {
       setGameStatus('result')
       setBuzzedPlayer(null)
       setPlayers(data.leaderboard || [])
+      if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
       setTimeLeft(null)
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
@@ -319,10 +330,12 @@ export default function DisplayTV() {
       console.log('🏁 Game finished:', data)
       setFinalResults({
         leaderboard: data.leaderboard || [],
+        teamLeaderboard: data.teamLeaderboard,
         totalRounds: data.totalRounds || 0
       })
       setGameStatus('finished')
       setPlayers(data.leaderboard || [])
+      if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
       if (audioRef.current) audioRef.current.pause()
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
 
@@ -332,8 +345,10 @@ export default function DisplayTV() {
 
     return () => {
       socket.offAny()  // Remove the catch-all listener
+      socket.off('game_state')
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('teams_updated')
       socket.off('round_started')
       socket.off('play_track')
       socket.off('stop_music')
@@ -702,9 +717,13 @@ export default function DisplayTV() {
         <div className="w-96 bg-bg-card/50 backdrop-blur-md border-l-2 border-primary/20 p-6 overflow-y-auto">
           <h3 className="font-display text-2xl font-bold mb-6 flex items-center gap-2">
             <span>🏆</span>
-            <span>Classement</span>
+            <span>{playMode === 'team' ? 'Équipes' : 'Classement'}</span>
           </h3>
-          <Leaderboard players={players} />
+          {playMode === 'team' ? (
+            <TeamLeaderboard teams={teams} players={players} showMembers={true} />
+          ) : (
+            <Leaderboard players={players} />
+          )}
         </div>
       </div>
     </div>
