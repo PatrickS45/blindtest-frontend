@@ -161,6 +161,13 @@ export interface ServerToClientEvents {
 
   player_left: (data: {
     playerId: string
+    playerName: string
+    players: Player[]
+  }) => void
+
+  player_disconnected: (data: {
+    playerId: string
+    playerName: string
     players: Player[]
   }) => void
 

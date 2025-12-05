@@ -123,6 +123,11 @@ export default function HostControl() {
       setPlayers(data.players)
     })
 
+    socket.on('player_disconnected', (data: any) => {
+      console.log(`⚠️ Player disconnected: ${data.playerName}`)
+      setPlayers(data.players)
+    })
+
     // Team events
     socket.on('team_created', (data: any) => {
       console.log('👥 [TEAM DEBUG] team_created event received:', data)
@@ -268,6 +273,7 @@ export default function HostControl() {
       socket.off('game_state')
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('player_disconnected')
       socket.off('team_created')
       socket.off('team_updated')
       socket.off('team_deleted')

@@ -117,6 +117,10 @@ export default function DisplayTV() {
 
     socket.on('player_joined', (data: any) => setPlayers(data.players || []))
     socket.on('player_left', (data: any) => setPlayers(data.players || []))
+    socket.on('player_disconnected', (data: any) => {
+      console.log(`⚠️ Player disconnected: ${data.playerName}`)
+      setPlayers(data.players || [])
+    })
     socket.on('teams_updated', (data: any) => setTeams(data.teams || []))
 
     socket.on('round_started', (data: any) => {
@@ -348,6 +352,7 @@ export default function DisplayTV() {
       socket.off('game_state')
       socket.off('player_joined')
       socket.off('player_left')
+      socket.off('player_disconnected')
       socket.off('teams_updated')
       socket.off('round_started')
       socket.off('play_track')
