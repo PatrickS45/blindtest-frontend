@@ -36,7 +36,8 @@ export function Leaderboard({ players, compact = false, className }: Leaderboard
               isTop3
                 ? 'bg-gradient-to-r from-bg-card to-bg-medium border-primary/30'
                 : 'bg-bg-card border-transparent',
-              compact ? 'p-3' : 'p-4'
+              compact ? 'p-3' : 'p-4',
+              !player.isConnected && 'opacity-50'
             )}
           >
             {/* Position & Medal */}
@@ -58,7 +59,10 @@ export function Leaderboard({ players, compact = false, className }: Leaderboard
 
               {/* Connection Status */}
               {!player.isConnected && (
-                <div className="text-xs text-text-secondary">(Déconnecté)</div>
+                <div className="flex items-center gap-2 text-sm text-yellow-400">
+                  <span className="text-lg">⚠️</span>
+                  <span>Déconnecté</span>
+                </div>
               )}
             </div>
 

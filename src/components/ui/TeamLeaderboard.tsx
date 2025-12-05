@@ -120,7 +120,10 @@ export function TeamLeaderboard({
                 {sortedMembers.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between px-3 py-1 rounded-lg bg-bg-dark/50"
+                    className={cn(
+                      "flex items-center justify-between px-3 py-1 rounded-lg bg-bg-dark/50 transition-all",
+                      !member.isConnected && "opacity-50"
+                    )}
                   >
                     <div className="flex items-center gap-2">
                       <div
@@ -128,6 +131,9 @@ export function TeamLeaderboard({
                         style={{ backgroundColor: member.color }}
                       />
                       <span className="text-sm">{member.name}</span>
+                      {!member.isConnected && (
+                        <span className="text-xs text-yellow-400">⚠️</span>
+                      )}
                     </div>
                     <span className="text-sm text-text-secondary font-semibold">
                       {member.score}
