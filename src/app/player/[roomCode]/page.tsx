@@ -29,6 +29,7 @@ export default function Player() {
 
   const [playerName, setPlayerName] = useState('')
   const [joined, setJoined] = useState(false)
+  const [isJoining, setIsJoining] = useState(false)
   const [playMode, setPlayMode] = useState<PlayMode>('solo')
   const [teams, setTeams] = useState<Team[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
@@ -71,11 +72,7 @@ export default function Player() {
       return
     }
 
-    console.log('👤 Joining game:', roomCode, playerName)
-    socket.emit('join_game', { roomCode, playerName })
-
-    // Mark as joined immediately (server will confirm with events)
-    setJoined(true)
+    console.log('👤 [JOIN DEBUG] Joining game:', roomCode, playerName)
 
     // Generate a random buzzer sound (1-23)
     const buzzerSound = Math.floor(Math.random() * 23) + 1
@@ -84,6 +81,21 @@ export default function Player() {
 
     // Save player name
     localStorage.setItem('blindtest_player_name', playerName)
+
+    // Emit join request
+    socket.emit('join_game', { roomCode, playerName })
+
+    // Mark as joining (will be confirmed by player_joined event)
+    setIsJoining(true)
+
+    // Timeout in case server doesn't respond (10 seconds)
+    setTimeout(() => {
+      if (!joined) {
+        console.error('❌ [JOIN DEBUG] Join timeout - server did not respond')
+        setIsJoining(false)
+        alert('Erreur: Impossible de rejoindre la partie. Vérifiez le code de la salle.')
+      }
+    }, 10000)
   }
 
   // Join team
@@ -95,11 +107,11 @@ export default function Player() {
     setTeamSelected(true)
   }
 
-  // Socket event listeners
+  // Socket event listeners - Game state and player joined (needed before joined=true)
   useEffect(() => {
-    if (!socket || !joined) return
+    if (!socket) return
 
-    // Game state (for teams)
+    // Game state - listen even when joining (to get playMode and teams before showing UI)
     socket.on('game_state', (data: any) => {
       console.log('👥 [TEAM DEBUG] game_state event received:', data)
       if (data.playMode) {
@@ -111,6 +123,30 @@ export default function Player() {
         setTeams(data.teams)
       }
     })
+
+    // Player joined - this confirms we successfully joined
+    socket.on('player_joined', (data: any) => {
+      console.log('👥 [JOIN DEBUG] player_joined event received:', data)
+
+      // Check if it's me who just joined
+      const myPlayer = data.players?.find((p: any) => p.name === playerName)
+      if (myPlayer && isJoining) {
+        console.log('✅ [JOIN DEBUG] Successfully joined! My player:', myPlayer)
+        setMyScore(myPlayer.score || 0)
+        setJoined(true)
+        setIsJoining(false)
+      }
+    })
+
+    return () => {
+      socket.off('game_state')
+      socket.off('player_joined')
+    }
+  }, [socket, playerName, isJoining])
+
+  // Socket event listeners - Game events (only when joined)
+  useEffect(() => {
+    if (!socket || !joined) return
 
     // Team events
     socket.on('teams_updated', (data: any) => {
@@ -142,15 +178,6 @@ export default function Player() {
         setGameMode(data.round.mode)
       } else {
         console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
-      }
-    })
-
-    socket.on('player_joined', (data: any) => {
-      console.log('👥 Player joined, updating players list')
-      // Initialize my score from the players list
-      const myPlayer = data.players?.find((p: any) => p.name === playerName)
-      if (myPlayer) {
-        setMyScore(myPlayer.score || 0)
       }
     })
 
@@ -238,11 +265,9 @@ export default function Player() {
     })
 
     return () => {
-      socket.off('game_state')
       socket.off('teams_updated')
       socket.off('player_joined_team')
       socket.off('round_started')
-      socket.off('player_joined')
       socket.off('buzz_locked')
       socket.off('timeout_warning')
       socket.off('round_result')
@@ -265,33 +290,42 @@ export default function Player() {
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">🎮</div>
             <h1 className="text-hero font-display font-bold mb-2 text-gradient-primary">
-              Rejoindre
+              {isJoining ? 'Connexion...' : 'Rejoindre'}
             </h1>
             <p className="text-text-secondary">Code : {roomCode}</p>
           </div>
 
           <div className="bg-bg-card rounded-3xl p-8 border-2 border-primary/20">
-            <label className="block text-text-secondary mb-3 font-semibold">
-              Votre pseudo
-            </label>
-            <input
-              type="text"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Joueur 1"
-              maxLength={20}
-              className="w-full bg-bg-dark text-text-primary px-6 py-4 rounded-2xl border-2 border-primary/30 focus:border-primary text-center text-xl font-display focus:outline-none transition-colors mb-6"
-              onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
-              autoFocus
-            />
+            {isJoining ? (
+              <div className="text-center py-8">
+                <div className="animate-spin text-6xl mb-4">⏳</div>
+                <p className="text-text-secondary">Connexion en cours...</p>
+              </div>
+            ) : (
+              <>
+                <label className="block text-text-secondary mb-3 font-semibold">
+                  Votre pseudo
+                </label>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Joueur 1"
+                  maxLength={20}
+                  className="w-full bg-bg-dark text-text-primary px-6 py-4 rounded-2xl border-2 border-primary/30 focus:border-primary text-center text-xl font-display focus:outline-none transition-colors mb-6"
+                  onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
+                  autoFocus
+                />
 
-            <button
-              onClick={handleJoin}
-              disabled={!playerName.trim()}
-              className="w-full bg-gradient-to-br from-primary to-primary-dark text-white py-4 rounded-2xl font-display font-bold text-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-transform"
-            >
-              Rejoindre →
-            </button>
+                <button
+                  onClick={handleJoin}
+                  disabled={!playerName.trim()}
+                  className="w-full bg-gradient-to-br from-primary to-primary-dark text-white py-4 rounded-2xl font-display font-bold text-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-transform"
+                >
+                  Rejoindre →
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
