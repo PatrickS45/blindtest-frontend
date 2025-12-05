@@ -90,7 +90,7 @@ export default function Player() {
   const handleJoinTeam = () => {
     if (!socket || !selectedTeamId) return
 
-    console.log('👥 Joining team:', selectedTeamId)
+    console.log('👥 [TEAM DEBUG] Emitting join_team:', { roomCode, teamId: selectedTeamId })
     socket.emit('join_team', { roomCode, teamId: selectedTeamId })
     setTeamSelected(true)
   }
@@ -101,21 +101,30 @@ export default function Player() {
 
     // Game state (for teams)
     socket.on('game_state', (data: any) => {
-      if (data.playMode) setPlayMode(data.playMode)
-      if (data.teams) setTeams(data.teams)
+      console.log('👥 [TEAM DEBUG] game_state event received:', data)
+      if (data.playMode) {
+        console.log('👥 [TEAM DEBUG] Play mode:', data.playMode)
+        setPlayMode(data.playMode)
+      }
+      if (data.teams) {
+        console.log('👥 [TEAM DEBUG] Teams in game_state:', data.teams)
+        setTeams(data.teams)
+      }
     })
 
     // Team events
     socket.on('teams_updated', (data: any) => {
+      console.log('👥 [TEAM DEBUG] teams_updated event received:', data)
       setTeams(data.teams)
     })
 
     socket.on('player_joined_team', (data: any) => {
+      console.log('👥 [TEAM DEBUG] player_joined_team event received:', data)
       setTeams(data.teams)
     })
 
     socket.on('round_started', (data: any) => {
-      console.log('🎵 Round started', data)
+      console.log('🎵 [PLAYER DEBUG] Round started:', data)
       setGameStatus('playing')
       setCanBuzz(true)
       setLastResult(null)
@@ -126,7 +135,13 @@ export default function Player() {
 
       // Capture game mode
       if (data.mode) {
+        console.log('🎮 [MODE DEBUG] Mode found in data.mode:', data.mode)
         setGameMode(data.mode)
+      } else if (data.round?.mode) {
+        console.log('🎮 [MODE DEBUG] Mode found in data.round.mode:', data.round.mode)
+        setGameMode(data.round.mode)
+      } else {
+        console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
       }
     })
 

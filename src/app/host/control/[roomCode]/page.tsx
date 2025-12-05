@@ -96,9 +96,23 @@ export default function HostControl() {
 
     // Game state
     socket.on('game_state', (data: any) => {
-      if (data.playMode) setPlayMode(data.playMode)
-      if (data.teams) setTeams(data.teams)
-      if (data.players) setPlayers(data.players)
+      console.log('🎮 [GAME STATE DEBUG] game_state event received:', data)
+      if (data.mode) {
+        console.log('🎮 [MODE DEBUG] Mode in game_state:', data.mode)
+        setGameMode(data.mode)
+      }
+      if (data.playMode) {
+        console.log('👥 [TEAM DEBUG] Play mode in game_state:', data.playMode)
+        setPlayMode(data.playMode)
+      }
+      if (data.teams) {
+        console.log('👥 [TEAM DEBUG] Teams in game_state:', data.teams)
+        setTeams(data.teams)
+      }
+      if (data.players) {
+        console.log('👥 [PLAYER DEBUG] Players in game_state:', data.players)
+        setPlayers(data.players)
+      }
     })
 
     socket.on('player_joined', (data: any) => {
@@ -111,18 +125,22 @@ export default function HostControl() {
 
     // Team events
     socket.on('team_created', (data: any) => {
+      console.log('👥 [TEAM DEBUG] team_created event received:', data)
       setTeams(data.teams)
     })
 
     socket.on('team_updated', (data: any) => {
+      console.log('👥 [TEAM DEBUG] team_updated event received:', data)
       setTeams(data.teams)
     })
 
     socket.on('team_deleted', (data: any) => {
+      console.log('👥 [TEAM DEBUG] team_deleted event received:', data)
       setTeams(data.teams)
     })
 
     socket.on('player_joined_team', (data: any) => {
+      console.log('👥 [TEAM DEBUG] player_joined_team event received:', data)
       setTeams(data.teams)
       setPlayers((prev) =>
         prev.map((p) =>
@@ -132,6 +150,7 @@ export default function HostControl() {
     })
 
     socket.on('player_left_team', (data: any) => {
+      console.log('👥 [TEAM DEBUG] player_left_team event received:', data)
       setTeams(data.teams)
       setPlayers((prev) =>
         prev.map((p) =>
@@ -141,13 +160,21 @@ export default function HostControl() {
     })
 
     socket.on('teams_updated', (data: any) => {
+      console.log('👥 [TEAM DEBUG] teams_updated event received:', data)
       setTeams(data.teams)
     })
 
     socket.on('round_started', (data: any) => {
+      console.log('🎮 [MODE DEBUG] round_started event received:', data)
       // Capture game mode
       if (data.mode) {
+        console.log('🎮 [MODE DEBUG] Mode found in data.mode:', data.mode)
         setGameMode(data.mode)
+      } else if (data.round?.mode) {
+        console.log('🎮 [MODE DEBUG] Mode found in data.round.mode:', data.round.mode)
+        setGameMode(data.round.mode)
+      } else {
+        console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
       }
     })
 
@@ -321,26 +348,31 @@ export default function HostControl() {
   // Team management handlers
   const handleCreateTeam = (teamName: string, teamColor: string) => {
     if (!socket) return
+    console.log('👥 [TEAM DEBUG] Emitting create_team:', { roomCode, teamName, teamColor })
     socket.emit('create_team', { roomCode, teamName, teamColor })
   }
 
   const handleUpdateTeam = (teamId: string, teamName: string, teamColor?: string) => {
     if (!socket) return
+    console.log('👥 [TEAM DEBUG] Emitting update_team:', { roomCode, teamId, teamName, teamColor })
     socket.emit('update_team', { roomCode, teamId, teamName, teamColor })
   }
 
   const handleDeleteTeam = (teamId: string) => {
     if (!socket) return
+    console.log('👥 [TEAM DEBUG] Emitting delete_team:', { roomCode, teamId })
     socket.emit('delete_team', { roomCode, teamId })
   }
 
   const handleAssignPlayer = (playerId: string, teamId: string) => {
     if (!socket) return
+    console.log('👥 [TEAM DEBUG] Emitting assign_player_to_team:', { roomCode, playerId, teamId })
     socket.emit('assign_player_to_team', { roomCode, playerId, teamId })
   }
 
   const handleRemovePlayerFromTeam = (playerId: string) => {
     if (!socket) return
+    console.log('👥 [TEAM DEBUG] Emitting leave_team:', { roomCode, playerId })
     socket.emit('leave_team', { roomCode, playerId })
   }
 
