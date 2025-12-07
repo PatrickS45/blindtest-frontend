@@ -96,6 +96,8 @@ export interface ClientToServerEvents {
     isCorrect?: boolean // Ancienne méthode (rétro-compatible)
     detailedAnswer?: DetailedAnswer // Nouvelle méthode avec détails
   }) => void
+  continue_round: (data: { roomCode: string }) => void
+  end_round: (data: { roomCode: string }) => void
   resume_audio: (data: { roomCode: string }) => void
 }
 
@@ -221,6 +223,21 @@ export interface ServerToClientEvents {
 
   wrong_answer_continue: (data: {
     message: string
+  }) => void
+
+  partial_answer_validated: (data: {
+    playerId: string
+    playerName: string
+    points: number
+    artistFound: boolean
+    titleFound: boolean
+    waitingForHost: boolean // True si on attend que l'hôte décide de continuer ou terminer
+  }) => void
+
+  round_continuing: (data: {
+    message: string
+    artistFound: boolean
+    titleFound: boolean
   }) => void
 
   // Timeouts

@@ -99,15 +99,79 @@ validate_answer: (data: {
   - ✓ Artiste seulement
   - ✓ Titre seulement
 
+### 4. **NOUVEAUX** Événements pour la Continuation de Round (Option A+)
+
+#### Événements Client → Serveur
+```typescript
+continue_round: (data: { roomCode: string }) => void
+end_round: (data: { roomCode: string }) => void
+```
+
+#### Événements Serveur → Client
+```typescript
+partial_answer_validated: (data: {
+  playerId: string
+  playerName: string
+  points: number
+  artistFound: boolean
+  titleFound: boolean
+  waitingForHost: boolean  // True = l'hôte doit décider de continuer ou terminer
+}) => void
+
+round_continuing: (data: {
+  message: string
+  artistFound: boolean
+  titleFound: boolean
+}) => void
+```
+
+### 5. Logique de Continuation de Round (Option A+)
+
+**Principe** : Après une validation partielle, l'hôte décide de continuer le round ou de passer à la manche suivante.
+
+**Flux de jeu détaillé** :
+
+1. **Joueur 1 buzz** → Dit "Beatles - Yellow Submarine"
+2. **Hôte valide** "✓ Artiste seulement"
+3. **Backend émet** `partial_answer_validated` avec :
+   - `artistFound: true, titleFound: false`
+   - `waitingForHost: true`
+4. **UI Hôte affiche** 2 boutons :
+   - ▶️ Continuer le round
+   - ⏭️ Passer à la suite
+5. **Si hôte clique "Continuer"** :
+   - Frontend émet `continue_round`
+   - Backend émet `round_continuing`
+   - Musique reprend
+   - D'autres joueurs peuvent buzzer
+   - Seul le titre peut être trouvé maintenant (artiste déjà validé)
+6. **Joueur 2 buzz** → Dit "Beatles - Hey Jude"
+7. **Hôte valide** :
+   - Si titre correct → Points partiels (car artiste déjà trouvé)
+   - Si titre faux → Pénalité
+8. **Round se termine**
+
+**Règles importantes** :
+- ✅ Un joueur ne peut buzzer qu'**une seule fois** par round
+- ✅ Si artiste trouvé → joueurs suivants ne peuvent gagner que les points du **titre**
+- ✅ Si titre trouvé → joueurs suivants ne peuvent gagner que les points de l'**artiste**
+- ✅ L'hôte a toujours le dernier mot (peut terminer le round à tout moment)
+
 ---
 
 ## 🛠️ Modifications à Effectuer sur le Backend
 
 ### 1. Modèle de Données (GameSession)
 
-Ajouter le champ `scoringConfig` dans le modèle de session de jeu :
+Ajouter les champs suivants dans le modèle de session de jeu :
 
 ```typescript
+interface RoundState {
+  artistFound: boolean
+  titleFound: boolean
+  playersBuzzed: string[]  // IDs des joueurs ayant déjà buzzé ce round
+}
+
 interface GameSession {
   roomCode: string
   mode: GameMode
@@ -120,7 +184,8 @@ interface GameSession {
   totalRounds: number
   playlistId?: string
   playlistName?: string
-  scoringConfig?: ScoringConfig  // AJOUTER CE CHAMP
+  scoringConfig?: ScoringConfig     // NOUVEAU: Configuration de scoring
+  currentRoundState?: RoundState    // NOUVEAU: État du round en cours
   createdAt: Date
 }
 ```
@@ -172,15 +237,15 @@ socket.on('create_game', (data) => {
 })
 ```
 
-### 3. Gestionnaire d'Événement `validate_answer`
+### 3. Gestionnaire d'Événement `validate_answer` avec Option A+
 
 **IMPORTANT : Garder la rétro-compatibilité avec l'ancien système !**
 
 Mettre à jour pour gérer DEUX modes de validation :
 - **Mode ancien** : `isCorrect: boolean` (pour compatibilité)
-- **Mode nouveau** : `detailedAnswer: { artistCorrect, titleCorrect }`
+- **Mode nouveau** : `detailedAnswer: { artistCorrect, titleCorrect }` + continuation de round
 
-**Logique de calcul des points :**
+**Logique complète avec continuation de round :**
 ```typescript
 socket.on('validate_answer', (data) => {
   const { roomCode, playerId, isCorrect, detailedAnswer } = data
@@ -191,26 +256,71 @@ socket.on('validate_answer', (data) => {
   // Récupérer la config de scoring (ou utiliser les valeurs par défaut)
   const scoring = gameSession.scoringConfig || DEFAULT_SCORING
 
+  // Initialiser currentRoundState si pas déjà fait
+  if (!gameSession.currentRoundState) {
+    gameSession.currentRoundState = {
+      artistFound: false,
+      titleFound: false,
+      playersBuzzed: []
+    }
+  }
+
+  const roundState = gameSession.currentRoundState
+
+  // Ajouter le joueur à la liste des joueurs ayant buzzé
+  if (!roundState.playersBuzzed.includes(playerId)) {
+    roundState.playersBuzzed.push(playerId)
+  }
+
   let pointsAwarded = 0
+  let artistCorrectNow = false
+  let titleCorrectNow = false
 
   // MODE NOUVEAU : Validation détaillée (prioritaire)
   if (detailedAnswer) {
     const { artistCorrect, titleCorrect } = detailedAnswer
 
+    artistCorrectNow = artistCorrect
+    titleCorrectNow = titleCorrect
+
+    // Calcul des points en tenant compte de ce qui a déjà été trouvé
     if (artistCorrect && titleCorrect) {
-      // Les 2 corrects → Points complets
-      pointsAwarded = scoring.pointsFullCorrect
+      // Les 2 corrects
+      if (roundState.artistFound && roundState.titleFound) {
+        // Les 2 déjà trouvés → Aucun point
+        pointsAwarded = 0
+      } else if (roundState.artistFound || roundState.titleFound) {
+        // 1 déjà trouvé → Points partiels pour la partie manquante
+        pointsAwarded = scoring.pointsPartialCorrect
+      } else {
+        // Rien encore trouvé → Points complets
+        pointsAwarded = scoring.pointsFullCorrect
+      }
     } else if (artistCorrect || titleCorrect) {
-      // 1 sur 2 correct → Points partiels
-      pointsAwarded = scoring.pointsPartialCorrect
+      // 1 sur 2 correct
+      if ((artistCorrect && roundState.artistFound) || (titleCorrect && roundState.titleFound)) {
+        // Partie déjà trouvée → Aucun point
+        pointsAwarded = 0
+      } else {
+        // Nouvelle partie trouvée → Points partiels
+        pointsAwarded = scoring.pointsPartialCorrect
+      }
     } else {
       // Les 2 faux → Pénalité
       pointsAwarded = scoring.pointsBothWrong
     }
+
+    // Mettre à jour ce qui a été trouvé
+    if (artistCorrect) roundState.artistFound = true
+    if (titleCorrect) roundState.titleFound = true
+
   }
   // MODE ANCIEN : Validation simple (rétro-compatibilité)
   else if (isCorrect !== undefined) {
     pointsAwarded = isCorrect ? scoring.pointsFullCorrect : scoring.pointsBothWrong
+    // En mode ancien, on termine le round
+    roundState.artistFound = isCorrect
+    roundState.titleFound = isCorrect
   }
 
   // Mettre à jour le score du joueur
@@ -229,12 +339,125 @@ socket.on('validate_answer', (data) => {
     }
   }
 
-  // Émettre les résultats...
-  // (logique existante pour émettre round_result, leaderboards, etc.)
+  // Décider si le round continue ou se termine
+  const bothFound = roundState.artistFound && roundState.titleFound
+  const isPartialAnswer = detailedAnswer && (artistCorrectNow !== titleCorrectNow) // XOR
+
+  if (bothFound || !detailedAnswer) {
+    // Round terminé : les 2 trouvés OU mode ancien
+    socket.to(roomCode).emit('round_result', {
+      roundNumber: gameSession.currentRound,
+      pointsAwarded: { [playerId]: pointsAwarded },
+      leaderboard: gameSession.players,
+      teamLeaderboard: gameSession.teams
+    })
+
+    // Réinitialiser l'état du round
+    gameSession.currentRoundState = undefined
+
+  } else if (isPartialAnswer) {
+    // Réponse partielle : demander à l'hôte de décider
+    socket.to(roomCode).emit('partial_answer_validated', {
+      playerId,
+      playerName: player?.name,
+      points: pointsAwarded,
+      artistFound: roundState.artistFound,
+      titleFound: roundState.titleFound,
+      waitingForHost: true,
+      leaderboard: gameSession.players
+    })
+  } else {
+    // Les 2 faux → continuer automatiquement (mode ancien comportement)
+    // Logique existante wrong_answer_continue
+  }
 })
 ```
 
-### 4. Événements à Émettre avec `scoringConfig`
+### 4. Gestionnaires d'Événements de Continuation
+
+```typescript
+// L'hôte décide de continuer le round
+socket.on('continue_round', (data) => {
+  const { roomCode } = data
+  const gameSession = gameSessions.get(roomCode)
+
+  if (!gameSession || !gameSession.currentRoundState) return
+
+  const roundState = gameSession.currentRoundState
+
+  // Émettre à tous que le round continue
+  io.to(roomCode).emit('round_continuing', {
+    message: roundState.artistFound
+      ? 'Artiste trouvé ! Cherchez le titre'
+      : 'Titre trouvé ! Cherchez l\'artiste',
+    artistFound: roundState.artistFound,
+    titleFound: roundState.titleFound
+  })
+
+  // Reprendre la musique (si besoin)
+  io.to(roomCode).emit('resume_audio')
+})
+
+// L'hôte décide de terminer le round
+socket.on('end_round', (data) => {
+  const { roomCode } = data
+  const gameSession = gameSessions.get(roomCode)
+
+  if (!gameSession) return
+
+  // Émettre le résultat final
+  io.to(roomCode).emit('round_result', {
+    roundNumber: gameSession.currentRound,
+    leaderboard: gameSession.players,
+    teamLeaderboard: gameSession.teams
+  })
+
+  // Réinitialiser l'état du round
+  gameSession.currentRoundState = undefined
+})
+```
+
+### 5. Initialisation de Round (start_round)
+
+```typescript
+socket.on('start_round', (data) => {
+  // ... logique existante ...
+
+  // Réinitialiser l'état du round
+  gameSession.currentRoundState = {
+    artistFound: false,
+    titleFound: false,
+    playersBuzzed: []
+  }
+
+  // ... reste de la logique ...
+})
+```
+
+### 6. Gestionnaire de Buzz (empêcher les doublons)
+
+```typescript
+socket.on('buzz', (data) => {
+  const { roomCode } = data
+  const gameSession = gameSessions.get(roomCode)
+
+  if (!gameSession) return
+
+  const playerId = socket.id
+
+  // Vérifier si le joueur a déjà buzzé ce round
+  if (gameSession.currentRoundState?.playersBuzzed.includes(playerId)) {
+    socket.emit('buzz_rejected', {
+      message: 'Vous avez déjà buzzé pour ce round !'
+    })
+    return
+  }
+
+  // ... logique existante de buzz ...
+})
+```
+
+### 7. Événements à Émettre avec `scoringConfig`
 
 S'assurer que les événements suivants incluent `scoringConfig` :
 

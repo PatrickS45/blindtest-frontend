@@ -59,6 +59,11 @@ export default function HostControl() {
     return false
   })
 
+  // Round continuation state (Option A+)
+  const [artistFound, setArtistFound] = useState(false)
+  const [titleFound, setTitleFound] = useState(false)
+  const [waitingForHostDecision, setWaitingForHostDecision] = useState(false)
+
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Toggle mute function
@@ -188,6 +193,11 @@ export default function HostControl() {
       setGameStatus('playing')
       setRoundNumber((prev) => prev + 1)
 
+      // Reset round continuation state
+      setArtistFound(false)
+      setTitleFound(false)
+      setWaitingForHostDecision(false)
+
       // Play audio
       const audio = new Audio(data.previewUrl)
       audio.volume = isMuted ? 0 : 0.7  // Apply mute state
@@ -251,8 +261,30 @@ export default function HostControl() {
         setBuzzedPlayer(null)
         setGameStatus('playing')
       }, 2000)
+    })
 
-      // Resume audio handled by resume_audio event from backend
+    socket.on('partial_answer_validated', (data: any) => {
+      console.log('⚠️ Partial answer validated:', data)
+      setArtistFound(data.artistFound)
+      setTitleFound(data.titleFound)
+      setWaitingForHostDecision(data.waitingForHost)
+      // Update players scores
+      if (data.leaderboard) {
+        setPlayers(data.leaderboard)
+      }
+    })
+
+    socket.on('round_continuing', (data: any) => {
+      console.log('▶️ Round continuing:', data)
+      setArtistFound(data.artistFound)
+      setTitleFound(data.titleFound)
+      setBuzzedPlayer(null)
+      setWaitingForHostDecision(false)
+      setGameStatus('playing')
+      // Resume audio
+      if (audioRef.current) {
+        audioRef.current.play().catch((err) => console.error('Resume audio error:', err))
+      }
     })
 
     socket.on('round_skipped', (data: any) => {
@@ -351,6 +383,16 @@ export default function HostControl() {
         titleCorrect
       }
     })
+  }
+
+  const handleContinueRound = () => {
+    if (!socket) return
+    socket.emit('continue_round', { roomCode })
+  }
+
+  const handleEndRound = () => {
+    if (!socket) return
+    socket.emit('end_round', { roomCode })
   }
 
   const handleSkipTrack = () => {
@@ -618,48 +660,91 @@ export default function HostControl() {
             </div>
 
             {/* Validation Buttons - Detailed Scoring */}
-            <div className="space-y-3 mb-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="success"
-                  size="large"
-                  onClick={() => handleDetailedValidation(true, true)}
-                  className="text-lg"
-                >
-                  ✓✓ Artiste + Titre
-                </Button>
-                <Button
-                  variant="danger"
-                  size="large"
-                  onClick={() => handleDetailedValidation(false, false)}
-                  className="text-lg"
-                >
-                  ✗✗ Les 2 faux
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="warning"
-                  size="medium"
-                  onClick={() => handleDetailedValidation(true, false)}
-                  className="text-base"
-                >
-                  ✓ Artiste seulement
-                </Button>
-                <Button
-                  variant="warning"
-                  size="medium"
-                  onClick={() => handleDetailedValidation(false, true)}
-                  className="text-base"
-                >
-                  ✓ Titre seulement
-                </Button>
-              </div>
-            </div>
+            {!waitingForHostDecision ? (
+              <>
+                <div className="space-y-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="success"
+                      size="large"
+                      onClick={() => handleDetailedValidation(true, true)}
+                      className="text-lg"
+                    >
+                      ✓✓ Artiste + Titre
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="large"
+                      onClick={() => handleDetailedValidation(false, false)}
+                      className="text-lg"
+                    >
+                      ✗✗ Les 2 faux
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="warning"
+                      size="medium"
+                      onClick={() => handleDetailedValidation(true, false)}
+                      className="text-base"
+                    >
+                      ✓ Artiste seulement
+                    </Button>
+                    <Button
+                      variant="warning"
+                      size="medium"
+                      onClick={() => handleDetailedValidation(false, true)}
+                      className="text-base"
+                    >
+                      ✓ Titre seulement
+                    </Button>
+                  </div>
+                </div>
 
-            <p className="text-center text-sm text-text-secondary">
-              💡 Sélectionnez ce que le joueur a trouvé correctement
-            </p>
+                <p className="text-center text-sm text-text-secondary">
+                  💡 Sélectionnez ce que le joueur a trouvé correctement
+                </p>
+              </>
+            ) : (
+              <>
+                {/* Round Status */}
+                <div className="bg-warning/10 border-2 border-warning rounded-xl p-4 mb-4">
+                  <div className="text-center">
+                    <p className="font-semibold text-warning mb-2">
+                      {artistFound && !titleFound && '✓ Artiste trouvé • Titre à trouver'}
+                      {!artistFound && titleFound && '✓ Titre trouvé • Artiste à trouver'}
+                    </p>
+                    <p className="text-sm text-text-secondary">
+                      {buzzedPlayer?.playerName} a gagné des points partiels
+                    </p>
+                  </div>
+                </div>
+
+                {/* Continue or End Round Buttons */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Button
+                    variant="primary"
+                    size="large"
+                    onClick={handleContinueRound}
+                    className="text-lg"
+                  >
+                    ▶️ Continuer le round
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="large"
+                    onClick={handleEndRound}
+                    className="text-lg"
+                  >
+                    ⏭️ Passer à la suite
+                  </Button>
+                </div>
+
+                <p className="text-center text-sm text-text-secondary">
+                  💡 Continuer permet aux autres joueurs de trouver la partie manquante
+                </p>
+              </>
+            )}
           </div>
         )}
 
