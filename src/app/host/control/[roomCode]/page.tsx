@@ -383,7 +383,7 @@ export default function HostControl() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-bg-dark to-bg-medium text-text-primary pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-bg-dark to-bg-medium text-text-primary pb-32">
       {/* Header */}
       <header className="bg-bg-card border-b-2 border-primary/20 p-6 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto">
