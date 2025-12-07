@@ -341,6 +341,18 @@ export default function HostControl() {
     })
   }
 
+  const handleDetailedValidation = (artistCorrect: boolean, titleCorrect: boolean) => {
+    if (!socket || !buzzedPlayer) return
+    socket.emit('validate_answer', {
+      roomCode,
+      playerId: buzzedPlayer.playerId,
+      detailedAnswer: {
+        artistCorrect,
+        titleCorrect
+      }
+    })
+  }
+
   const handleSkipTrack = () => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -605,28 +617,48 @@ export default function HostControl() {
               <div className="text-xl text-text-secondary">{currentTrack.artist}</div>
             </div>
 
-            {/* Validation Buttons */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Button
-                variant="success"
-                size="large"
-                onClick={() => handleValidateAnswer(true)}
-                className="text-xl"
-              >
-                ✓ Bonne réponse
-              </Button>
-              <Button
-                variant="danger"
-                size="large"
-                onClick={() => handleValidateAnswer(false)}
-                className="text-xl"
-              >
-                ✗ Mauvaise réponse
-              </Button>
+            {/* Validation Buttons - Detailed Scoring */}
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="success"
+                  size="large"
+                  onClick={() => handleDetailedValidation(true, true)}
+                  className="text-lg"
+                >
+                  ✓✓ Artiste + Titre
+                </Button>
+                <Button
+                  variant="danger"
+                  size="large"
+                  onClick={() => handleDetailedValidation(false, false)}
+                  className="text-lg"
+                >
+                  ✗✗ Les 2 faux
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="warning"
+                  size="medium"
+                  onClick={() => handleDetailedValidation(true, false)}
+                  className="text-base"
+                >
+                  ✓ Artiste seulement
+                </Button>
+                <Button
+                  variant="warning"
+                  size="medium"
+                  onClick={() => handleDetailedValidation(false, true)}
+                  className="text-base"
+                >
+                  ✓ Titre seulement
+                </Button>
+              </div>
             </div>
 
             <p className="text-center text-sm text-text-secondary">
-              💡 Écoute la réponse du joueur et valide
+              💡 Sélectionnez ce que le joueur a trouvé correctement
             </p>
           </div>
         )}

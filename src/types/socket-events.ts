@@ -13,6 +13,8 @@ import {
   Track,
   Team,
   PlayMode,
+  ScoringConfig,
+  DetailedAnswer,
 } from './game'
 
 // ==========================================
@@ -29,6 +31,7 @@ export interface ClientToServerEvents {
       randomStart?: boolean
       numberOfTeams?: number
     }
+    scoringConfig?: ScoringConfig
   }) => void
   join_game: (data: { roomCode: string; playerName: string }) => void
   leave_game: (data: { roomCode: string }) => void
@@ -90,7 +93,8 @@ export interface ClientToServerEvents {
   validate_answer: (data: {
     roomCode: string
     playerId: string
-    isCorrect: boolean
+    isCorrect?: boolean // Ancienne méthode (rétro-compatible)
+    detailedAnswer?: DetailedAnswer // Nouvelle méthode avec détails
   }) => void
   resume_audio: (data: { roomCode: string }) => void
 }
@@ -106,6 +110,7 @@ export interface ServerToClientEvents {
     hostId: string
     mode: GameMode
     playMode: PlayMode
+    scoringConfig?: ScoringConfig
   }) => void
 
   game_state: (data: {
@@ -118,6 +123,7 @@ export interface ServerToClientEvents {
     totalRounds: number
     playlistId?: string
     playlistName?: string
+    scoringConfig?: ScoringConfig
   }) => void
 
   // Team Management
