@@ -87,6 +87,19 @@ export const GAME_MODES: ModeConfig[] = [
       'Alliances possibles',
     ],
   },
+  {
+    id: 'trivia',
+    name: 'Quiz Culture',
+    emoji: '🧠',
+    description: 'Questions de culture générale',
+    color: '#9C27B0',
+    features: [
+      '596 questions variées',
+      'QCM 4 réponses',
+      'Timer 20 secondes',
+      'Validation automatique',
+    ],
+  },
 ]
 
 // ==========================================
