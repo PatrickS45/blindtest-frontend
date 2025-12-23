@@ -5,10 +5,12 @@ import { useParams } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { Leaderboard } from '@/components/ui/Leaderboard'
 import { TeamLeaderboard } from '@/components/ui/TeamLeaderboard'
-import { Player, Team, PlayMode } from '@/types/game'
+import { Player, Team, PlayMode, TriviaOption, TriviaResult } from '@/types/game'
 import { cn } from '@/lib/utils'
 import confetti from 'canvas-confetti'
 import { QRCodeCanvas } from 'qrcode.react'
+import { TriviaQuestion, TriviaResults } from '@/components/game/TriviaQuestion'
+import { getSoundManager } from '@/utils/SoundManager'
 
 interface BuzzedPlayer {
   playerName: string
@@ -36,7 +38,7 @@ export default function DisplayTV() {
   const [players, setPlayers] = useState<Player[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [playMode, setPlayMode] = useState<PlayMode>('solo')
-  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'buzzed' | 'result' | 'finished'>('waiting')
+  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'buzzed' | 'result' | 'finished' | 'trivia'>('waiting')
   const [buzzedPlayer, setBuzzedPlayer] = useState<BuzzedPlayer | null>(null)
   const [result, setResult] = useState<RoundResult | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
@@ -48,8 +50,23 @@ export default function DisplayTV() {
   const [isShaking, setIsShaking] = useState(false)
   const [finalResults, setFinalResults] = useState<{ leaderboard: Player[]; teamLeaderboard?: Team[]; totalRounds: number } | null>(null)
 
+  // Trivia-specific state
+  const [triviaQuestion, setTriviaQuestion] = useState<{
+    question: string
+    options: TriviaOption[]
+    category?: string
+    difficulty?: string
+    timeout: number
+  } | null>(null)
+  const [triviaResults, setTriviaResults] = useState<TriviaResult | null>(null)
+  const [triviaTimeRemaining, setTriviaTimeRemaining] = useState(20)
+  const [roundNumber, setRoundNumber] = useState(0)
+  const [totalRounds, setTotalRounds] = useState(0)
+  const [playerAnswers, setPlayerAnswers] = useState<Record<string, number>>({})
+
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const soundManagerRef = useRef(getSoundManager(80))
 
   // Confetti animation
   const fireConfetti = () => {
@@ -128,6 +145,40 @@ export default function DisplayTV() {
       if (data.mode) {
         setGameMode(data.mode)
       }
+
+      // Update round numbers
+      if (data.round) {
+        setRoundNumber(data.round.roundNumber || 0)
+      }
+
+      // Handle TRIVIA mode
+      if (data.mode === 'trivia' && data.round?.qcm?.type === 'trivia') {
+        console.log('🤔 [TRIVIA] Round started with question:', data.round.qcm)
+        setTriviaQuestion(data.round.qcm)
+        setTriviaTimeRemaining(data.round.qcm.timeout || 20)
+        setTriviaResults(null)
+        setPlayerAnswers({})
+        setGameStatus('trivia')
+
+        // Start trivia countdown
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = setInterval(() => {
+          setTriviaTimeRemaining((prev) => {
+            if (prev <= 1) {
+              clearInterval(timerIntervalRef.current!)
+              soundManagerRef.current.play('timeUp')
+              return 0
+            }
+            if (prev === 6) {
+              soundManagerRef.current.play('countdownUrgent')
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        return
+      }
+
       // Reset bomb holder
       setBombHolder(null)
       // Initialize hints for questions_rafale mode
@@ -328,6 +379,68 @@ export default function DisplayTV() {
     socket.on('hint_revealed', (data: any) => {
       console.log('💡 Hint revealed:', data.hintIndex)
       setCurrentHintIndex(data.hintIndex)
+    })
+
+    socket.on('qcm_result', (data: any) => {
+      console.log('📊 [TRIVIA] QCM Results received:', data)
+
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      setTriviaResults(data)
+      setPlayers(data.leaderboard || [])
+      if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
+
+      // Play reveal sound
+      soundManagerRef.current.play('reveal')
+
+      // Count answers for each option
+      const answerCounts: Record<string, number> = {}
+      data.results.forEach((result: any) => {
+        const optionText = result.answer
+        if (triviaQuestion) {
+          const optionIndex = triviaQuestion.options.findIndex(opt => opt.text === optionText)
+          if (optionIndex >= 0) {
+            answerCounts[optionIndex] = (answerCounts[optionIndex] || 0) + 1
+          }
+        }
+      })
+      setPlayerAnswers(answerCounts)
+
+      // Play sounds for correct/wrong answers
+      setTimeout(() => {
+        data.results.forEach((result: any, index: number) => {
+          setTimeout(() => {
+            if (result.isCorrect) {
+              soundManagerRef.current.play('correct')
+            } else {
+              soundManagerRef.current.play('wrong')
+            }
+          }, index * 300)
+        })
+      }, 1000)
+
+      // Trigger confetti for correct answers
+      const correctCount = data.results.filter((r: any) => r.isCorrect).length
+      if (correctCount > 0) {
+        setTimeout(() => {
+          fireConfetti()
+        }, 1500)
+      }
+
+      // Reset after 8 seconds
+      setTimeout(() => {
+        setGameStatus('waiting')
+        setTriviaQuestion(null)
+        setTriviaResults(null)
+      }, 8000)
+    })
+
+    socket.on('game_state', (data: any) => {
+      if (data.playMode) setPlayMode(data.playMode)
+      if (data.teams) setTeams(data.teams)
+      if (data.players) setPlayers(data.players)
+      if (data.totalRounds) setTotalRounds(data.totalRounds)
+      if (data.currentRound !== undefined) setRoundNumber(data.currentRound)
     })
 
     socket.on('game_finished', (data: any) => {
@@ -543,6 +656,35 @@ export default function DisplayTV() {
                 </div>
               ) : (
                 <p className="text-2xl text-text-secondary relative z-10">Qui trouvera en premier ?</p>
+              )}
+            </div>
+          )}
+
+          {/* Trivia Question State */}
+          {gameStatus === 'trivia' && triviaQuestion && (
+            <div className="animate-fade-in w-full">
+              <TriviaQuestion
+                question={triviaQuestion.question}
+                options={triviaQuestion.options}
+                category={triviaQuestion.category}
+                difficulty={triviaQuestion.difficulty}
+                roundNumber={roundNumber}
+                totalRounds={totalRounds}
+                timeRemaining={triviaTimeRemaining}
+                initialTime={triviaQuestion.timeout}
+                showResults={triviaResults !== null}
+                correctAnswer={triviaResults?.correctAnswer}
+                playerAnswers={playerAnswers}
+              />
+
+              {/* Show individual player results */}
+              {triviaResults && (
+                <div className="mt-12">
+                  <h3 className="text-3xl font-display font-bold text-center mb-6">
+                    📊 Résultats
+                  </h3>
+                  <TriviaResults results={triviaResults.results} />
+                </div>
               )}
             </div>
           )}
