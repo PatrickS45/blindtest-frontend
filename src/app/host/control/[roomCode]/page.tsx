@@ -50,6 +50,12 @@ export default function HostControl() {
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
   const [wrongAnswerFeedback, setWrongAnswerFeedback] = useState(false)
+
+  // TRIVIA-specific states
+  const [triviaLoaded, setTriviaLoaded] = useState(false)
+  const [triviaQuestionCount, setTriviaQuestionCount] = useState(0)
+  const [triviaCategory, setTriviaCategory] = useState<string>('')
+  const [triviaDifficulty, setTriviaDifficulty] = useState<string>('')
   const [isMuted, setIsMuted] = useState(() => {
     // Load mute state from localStorage
     if (typeof window !== 'undefined') {
@@ -323,11 +329,48 @@ export default function HostControl() {
     })
   }
 
+  const handleLoadTriviaQuestions = () => {
+    if (!socket) return
+
+    setIsLoadingPlaylist(true) // Reuse loading state
+    console.log('🤔 Loading trivia questions...')
+
+    socket.emit('load_trivia_questions', {
+      roomCode,
+      provider: 'trivia',
+      category: triviaCategory || undefined,
+      difficulty: triviaDifficulty || undefined,
+    })
+
+    // Listen for trivia loaded event
+    socket.once('trivia_loaded', (data: any) => {
+      setIsLoadingPlaylist(false)
+      setTriviaLoaded(true)
+      setTriviaQuestionCount(data.questionCount)
+      console.log('✅ Trivia loaded:', data.questionCount, 'questions')
+    })
+
+    socket.once('error', (data: any) => {
+      setIsLoadingPlaylist(false)
+      alert('Erreur chargement questions : ' + data.message)
+    })
+  }
+
   const handleStartRound = () => {
-    if (!socket || !playlist) {
-      console.log('❌ Cannot start round - socket:', !!socket, 'playlist:', !!playlist)
-      return
+    // For TRIVIA mode, check if trivia is loaded instead of playlist
+    if (gameMode === 'trivia') {
+      if (!socket || !triviaLoaded) {
+        console.log('❌ Cannot start TRIVIA round - socket:', !!socket, 'triviaLoaded:', triviaLoaded)
+        return
+      }
+    } else {
+      // For music modes, check playlist
+      if (!socket || !playlist) {
+        console.log('❌ Cannot start round - socket:', !!socket, 'playlist:', !!playlist)
+        return
+      }
     }
+
     console.log('▶️ Starting round - roomCode:', roomCode, 'socket.id:', socket.id, 'connected:', socket.connected)
     socket.emit('start_round', { roomCode })
   }
@@ -451,8 +494,76 @@ export default function HostControl() {
           </div>
         </div>
 
-        {/* Playlist Configuration */}
-        {gameStatus === 'waiting' && !playlist && (
+        {/* TRIVIA Configuration */}
+        {gameStatus === 'waiting' && gameMode === 'trivia' && !triviaLoaded && (
+          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
+            <h2 className="font-display text-xl font-semibold mb-4">🧠 Configuration Quiz Culture</h2>
+            <div className="space-y-4">
+              <div className="bg-primary/10 border-2 border-primary/30 rounded-xl p-4">
+                <p className="text-sm text-text-secondary">
+                  💡 <strong>596 questions</strong> de culture générale disponibles
+                  <br />
+                  Les questions sont automatiquement chargées depuis l'API Trivia
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-text-secondary mb-2">
+                    Catégorie (optionnel)
+                  </label>
+                  <select
+                    value={triviaCategory}
+                    onChange={(e) => setTriviaCategory(e.target.value)}
+                    className="w-full bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none"
+                  >
+                    <option value="">Toutes</option>
+                    <option value="histoire">Histoire</option>
+                    <option value="geographie">Géographie</option>
+                    <option value="sciences">Sciences</option>
+                    <option value="cinema">Cinéma</option>
+                    <option value="musique">Musique</option>
+                    <option value="sport">Sport</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-text-secondary mb-2">
+                    Difficulté (optionnel)
+                  </label>
+                  <select
+                    value={triviaDifficulty}
+                    onChange={(e) => setTriviaDifficulty(e.target.value)}
+                    className="w-full bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none"
+                  >
+                    <option value="">Toutes</option>
+                    <option value="facile">Facile</option>
+                    <option value="normal">Normal</option>
+                    <option value="difficile">Difficile</option>
+                  </select>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                size="large"
+                onClick={handleLoadTriviaQuestions}
+                disabled={isLoadingPlaylist}
+                loading={isLoadingPlaylist}
+                className="w-full"
+              >
+                🧠 Charger les questions
+              </Button>
+
+              <p className="text-xs text-text-secondary">
+                ℹ️ Les questions seront mélangées aléatoirement à chaque partie
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Playlist Configuration (pour modes musicaux) */}
+        {gameStatus === 'waiting' && gameMode !== 'trivia' && !playlist && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Configuration Playlist</h2>
             <div className="space-y-4">
@@ -496,8 +607,23 @@ export default function HostControl() {
           </div>
         )}
 
-        {/* Playlist Loaded */}
-        {playlist && gameStatus === 'waiting' && (
+        {/* TRIVIA Questions Loaded */}
+        {triviaLoaded && gameStatus === 'waiting' && gameMode === 'trivia' && (
+          <div className="bg-success/10 rounded-3xl p-6 border-2 border-success">
+            <h2 className="font-display text-xl font-semibold mb-2 text-success">✓ Questions chargées</h2>
+            <p className="text-text-primary">
+              <strong>{triviaQuestionCount} questions</strong> de culture générale prêtes
+            </p>
+            <p className="text-text-secondary text-sm">
+              {triviaCategory && `Catégorie: ${triviaCategory}`}
+              {triviaCategory && triviaDifficulty && ' • '}
+              {triviaDifficulty && `Difficulté: ${triviaDifficulty}`}
+            </p>
+          </div>
+        )}
+
+        {/* Playlist Loaded (pour modes musicaux) */}
+        {playlist && gameStatus === 'waiting' && gameMode !== 'trivia' && (
           <div className="bg-success/10 rounded-3xl p-6 border-2 border-success">
             <h2 className="font-display text-xl font-semibold mb-2 text-success">✓ Playlist chargée</h2>
             <p className="text-text-primary">
@@ -632,7 +758,8 @@ export default function HostControl() {
         )}
 
         {/* Team Management (Team Mode Only) */}
-        {playMode === 'team' && gameStatus === 'waiting' && !playlist && (
+        {playMode === 'team' && gameStatus === 'waiting' &&
+         ((gameMode === 'trivia' && !triviaLoaded) || (gameMode !== 'trivia' && !playlist)) && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <TeamManagement
               teams={teams}
@@ -689,7 +816,10 @@ export default function HostControl() {
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-bg-card border-t-2 border-primary/20 p-4 z-20">
         <div className="max-w-7xl mx-auto">
-          {gameStatus === 'waiting' && playlist && players.length > 0 && (
+          {/* Show start button if content is loaded (playlist OR trivia) and players present */}
+          {gameStatus === 'waiting' &&
+           ((gameMode === 'trivia' && triviaLoaded) || (gameMode !== 'trivia' && playlist)) &&
+           players.length > 0 && (
             <Button
               variant="primary"
               size="xl"
@@ -706,10 +836,12 @@ export default function HostControl() {
             </Button>
           )}
 
-          {gameStatus === 'waiting' && (!playlist || players.length === 0) && (
+          {gameStatus === 'waiting' &&
+           (((gameMode === 'trivia' && !triviaLoaded) || (gameMode !== 'trivia' && !playlist)) || players.length === 0) && (
             <div className="text-center text-text-secondary">
-              {!playlist && '📝 Charge une playlist pour commencer'}
-              {playlist && players.length === 0 && '⏳ En attente de joueurs...'}
+              {gameMode === 'trivia' && !triviaLoaded && '🧠 Charge les questions pour commencer'}
+              {gameMode !== 'trivia' && !playlist && '📝 Charge une playlist pour commencer'}
+              {((gameMode === 'trivia' && triviaLoaded) || (gameMode !== 'trivia' && playlist)) && players.length === 0 && '⏳ En attente de joueurs...'}
             </div>
           )}
         </div>
