@@ -515,6 +515,22 @@ export default function HostControl() {
     socket.emit('validate_qcm', { roomCode })
   }
 
+  const handleNextTriviaQuestion = () => {
+    if (!socket || !socket.connected) {
+      console.error('❌ [TRIVIA] Socket not connected')
+      alert('Connexion perdue. Rechargez la page.')
+      return
+    }
+
+    console.log('▶️ [TRIVIA] Starting next question...')
+    // Reset trivia results
+    setTriviaResults(null)
+    setTriviaCurrentQuestion(null)
+
+    // Start new round
+    socket.emit('start_round', { roomCode })
+  }
+
   const handleSkipTrack = () => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -932,7 +948,7 @@ export default function HostControl() {
               <Button
                 variant="primary"
                 size="large"
-                onClick={handleStartRound}
+                onClick={handleNextTriviaQuestion}
                 className="w-full"
               >
                 ▶️ Question suivante
