@@ -146,16 +146,27 @@ export default function DisplayTV() {
         setGameMode(data.mode)
       }
 
-      // Update round numbers
-      if (data.round) {
-        setRoundNumber(data.round.roundNumber || 0)
+      // Update round number (comes directly in data, not data.round)
+      if (data.roundNumber !== undefined) {
+        setRoundNumber(data.roundNumber)
       }
 
-      // Handle TRIVIA mode
-      if (data.mode === 'trivia' && data.round?.qcm?.type === 'trivia') {
-        console.log('🤔 [TRIVIA] Round started with question:', data.round.qcm)
-        setTriviaQuestion(data.round.qcm)
-        setTriviaTimeRemaining(data.round.qcm.timeout || 20)
+      // Handle TRIVIA mode - data structure: { mode, qcm, track }
+      if (data.mode === 'trivia' && data.qcm?.type === 'trivia') {
+        console.log('🤔 [TRIVIA] Round started with question:', {
+          question: data.qcm.question,
+          category: data.track?.category,
+          difficulty: data.track?.difficulty
+        })
+
+        // Set question data from flat structure (not nested in data.round)
+        setTriviaQuestion({
+          ...data.qcm,
+          category: data.track?.category || '',
+          difficulty: data.track?.difficulty || '',
+          timeout: 20
+        })
+        setTriviaTimeRemaining(20)
         setTriviaResults(null)
         setPlayerAnswers({})
         setGameStatus('trivia')
