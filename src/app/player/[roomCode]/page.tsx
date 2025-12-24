@@ -66,6 +66,8 @@ export default function Player() {
   const myBuzzerSoundRef = useRef<number | null>(null)
   const soundManagerRef = useRef(getSoundManager(80))
   const triviaTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isJoiningRef = useRef(false)
+  const joinTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Get player name from localStorage
   useEffect(() => {
@@ -102,16 +104,23 @@ export default function Player() {
     // Save player name
     localStorage.setItem('blindtest_player_name', playerName)
 
+    // Mark as joining (use ref to avoid race condition)
+    isJoiningRef.current = true
+    setIsJoining(true)
+
     // Emit join request
     socket.emit('join_game', { roomCode, playerName })
 
-    // Mark as joining (will be confirmed by player_joined event)
-    setIsJoining(true)
+    // Clear any existing timeout
+    if (joinTimeoutRef.current) {
+      clearTimeout(joinTimeoutRef.current)
+    }
 
     // Timeout in case server doesn't respond (10 seconds)
-    setTimeout(() => {
-      if (!joined) {
+    joinTimeoutRef.current = setTimeout(() => {
+      if (isJoiningRef.current) {
         console.error('❌ [JOIN DEBUG] Join timeout - server did not respond')
+        isJoiningRef.current = false
         setIsJoining(false)
         alert('Erreur: Impossible de rejoindre la partie. Vérifiez le code de la salle.')
       }
@@ -148,10 +157,19 @@ export default function Player() {
     socket.on('player_joined', (data: any) => {
       console.log('👥 [JOIN DEBUG] player_joined event received:', data)
 
-      // Check if it's me who just joined
+      // Check if it's me who just joined (use ref to avoid race condition)
       const myPlayer = data.players?.find((p: any) => p.name === playerName)
-      if (myPlayer && isJoining) {
+      if (myPlayer && isJoiningRef.current) {
         console.log('✅ [JOIN DEBUG] Successfully joined! My player:', myPlayer)
+
+        // Clear join timeout
+        if (joinTimeoutRef.current) {
+          clearTimeout(joinTimeoutRef.current)
+          joinTimeoutRef.current = null
+        }
+
+        // Update state
+        isJoiningRef.current = false
         setMyScore(myPlayer.score || 0)
         setJoined(true)
         setIsJoining(false)
@@ -161,8 +179,14 @@ export default function Player() {
     return () => {
       socket.off('game_state')
       socket.off('player_joined')
+
+      // Clean up join timeout on unmount
+      if (joinTimeoutRef.current) {
+        clearTimeout(joinTimeoutRef.current)
+        joinTimeoutRef.current = null
+      }
     }
-  }, [socket, playerName, isJoining])
+  }, [socket, playerName])
 
   // Socket event listeners - Game events (only when joined)
   useEffect(() => {
