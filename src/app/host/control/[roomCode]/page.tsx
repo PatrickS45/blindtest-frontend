@@ -216,12 +216,19 @@ export default function HostControl() {
         setTriviaResults(null)
         setGameStatus('playing')
 
-        // Start countdown timer
+        // Start countdown timer with auto-validation
         if (triviaTimerRef.current) clearInterval(triviaTimerRef.current)
         triviaTimerRef.current = setInterval(() => {
           setTriviaTimeRemaining((prev) => {
             if (prev <= 1) {
               clearInterval(triviaTimerRef.current!)
+              // Auto-validate when timer expires
+              console.log('⏱️ [TRIVIA HOST] Timer expired - auto-validating...')
+              setTimeout(() => {
+                if (socket) {
+                  socket.emit('validate_qcm', { roomCode })
+                }
+              }, 500) // Small delay to ensure all answers are received
               return 0
             }
             return prev - 1
@@ -811,16 +818,22 @@ export default function HostControl() {
             <div className="mt-4 space-y-3">
               <div className="text-center text-sm text-text-secondary">
                 💡 Les joueurs sont en train de répondre...
+                {triviaTimeRemaining > 0 && (
+                  <div className="mt-2 text-xs">
+                    ⏱️ Validation automatique dans {triviaTimeRemaining}s
+                  </div>
+                )}
               </div>
-              <Button
-                variant="success"
-                size="large"
-                onClick={handleValidateQCM}
-                className="w-full"
-              >
-                ✓ Valider les réponses
-                {triviaTimeRemaining === 0 && ' (temps écoulé)'}
-              </Button>
+              {triviaTimeRemaining > 0 && (
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleValidateQCM}
+                  className="w-full"
+                >
+                  ⏭️ Valider maintenant (anticipé)
+                </Button>
+              )}
             </div>
           </div>
         )}
