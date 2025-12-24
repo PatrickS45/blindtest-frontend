@@ -97,9 +97,9 @@ export default function HostControl() {
       triviaLogoAudioRef.current = null
     }
 
-    // Random logo from logo, logo1, logo2, ..., logo8 (9 total)
+    // Random logo from Logo, Logo1, Logo2, ..., Logo8 (9 total)
     const logoNumber = Math.floor(Math.random() * 9)
-    const logoName = logoNumber === 0 ? 'logo' : `logo${logoNumber}`
+    const logoName = logoNumber === 0 ? 'Logo' : `Logo${logoNumber}`
     const logoPath = `/sounds/trivia/${logoName}.mp3`
 
     console.log('🎵 [TRIVIA] Playing logo:', logoName)
