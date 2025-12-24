@@ -59,6 +59,7 @@ export default function HostControl() {
   const [triviaCurrentQuestion, setTriviaCurrentQuestion] = useState<any>(null)
   const [triviaResults, setTriviaResults] = useState<any>(null)
   const [triviaTimeRemaining, setTriviaTimeRemaining] = useState(20)
+  const [triviaLoadingNext, setTriviaLoadingNext] = useState(false)
   const triviaTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const [isMuted, setIsMuted] = useState(() => {
@@ -97,9 +98,9 @@ export default function HostControl() {
       triviaLogoAudioRef.current = null
     }
 
-    // Random logo from logo, logo1, logo2, ..., logo8 (9 total)
+    // Random logo from Logo, Logo1, Logo2, ..., Logo8 (9 total)
     const logoNumber = Math.floor(Math.random() * 9)
-    const logoName = logoNumber === 0 ? 'logo' : `logo${logoNumber}`
+    const logoName = logoNumber === 0 ? 'Logo' : `Logo${logoNumber}`
     const logoPath = `/sounds/trivia/${logoName}.mp3`
 
     console.log('🎵 [TRIVIA] Playing logo:', logoName)
@@ -252,6 +253,7 @@ export default function HostControl() {
         })
         setTriviaTimeRemaining(20)
         setTriviaResults(null)
+        setTriviaLoadingNext(false) // Question loaded successfully
         setGameStatus('playing')
 
         // Play random logo music
@@ -513,6 +515,36 @@ export default function HostControl() {
     // Stop logo music when validating manually
     stopTriviaLogo()
     socket.emit('validate_qcm', { roomCode })
+  }
+
+  const handleNextTriviaQuestion = () => {
+    if (!socket || !socket.connected) {
+      console.error('❌ [TRIVIA] Socket not connected')
+      alert('Connexion perdue. Rechargez la page.')
+      return
+    }
+
+    console.log('▶️ [TRIVIA] Starting next question...')
+
+    // Set loading state to prevent double-clicks
+    setTriviaLoadingNext(true)
+
+    // Clean up previous timer to avoid race conditions
+    if (triviaTimerRef.current) {
+      clearInterval(triviaTimerRef.current)
+      triviaTimerRef.current = null
+    }
+
+    // Stop any logo music
+    stopTriviaLogo()
+
+    // Reset trivia state
+    setTriviaResults(null)
+    setTriviaCurrentQuestion(null)
+    setTriviaTimeRemaining(20)
+
+    // Start new round
+    socket.emit('start_round', { roomCode })
   }
 
   const handleSkipTrack = () => {
@@ -932,10 +964,11 @@ export default function HostControl() {
               <Button
                 variant="primary"
                 size="large"
-                onClick={handleStartRound}
+                onClick={handleNextTriviaQuestion}
+                disabled={triviaLoadingNext}
                 className="w-full"
               >
-                ▶️ Question suivante
+                {triviaLoadingNext ? '⏳ Chargement...' : '▶️ Question suivante'}
               </Button>
             </div>
           </div>
