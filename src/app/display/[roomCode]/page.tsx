@@ -192,6 +192,12 @@ export default function DisplayTV() {
     })
 
     socket.on('play_track', (data: any) => {
+      // Ignore play_track in TRIVIA mode - trivia uses QCM flow instead
+      if (gameMode === 'trivia') {
+        console.log('⚠️ Received play_track in TRIVIA mode, ignoring')
+        return
+      }
+
       console.log('🎵 [PLAY_TRACK] Track data:', {
         previewUrl: data.previewUrl,
         startTime: data.startTime,
