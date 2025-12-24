@@ -36,6 +36,23 @@ The following sound files need to be added to this directory:
 - **Usage**: Plays between questions
 - **Recommendation**: Use a positive transition sound or chime
 
+### 6. Background Music Logos (logo.mp3 - logo8.mp3)
+- **Description**: Background music/jingles played during question time
+- **Quantity**: 9 files total
+  - `logo.mp3`
+  - `logo1.mp3`
+  - `logo2.mp3`
+  - `logo3.mp3`
+  - `logo4.mp3`
+  - `logo5.mp3`
+  - `logo6.mp3`
+  - `logo7.mp3`
+  - `logo8.mp3`
+- **Duration**: 20-30 seconds (or loopable)
+- **Usage**: One logo is randomly selected and played (looping) during the 20-second question timer
+- **Volume**: 50% (half volume to not interfere with focus)
+- **Recommendation**: Use upbeat, non-distracting background music or quiz show-style jingles
+
 ## Notes
 
 - **correct.mp3** and **wrong.mp3** are already available in `/public/sounds/`

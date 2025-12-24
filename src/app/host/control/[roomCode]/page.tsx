@@ -71,6 +71,7 @@ export default function HostControl() {
   })
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const triviaLogoAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Toggle mute function
   const toggleMute = () => {
@@ -81,8 +82,45 @@ export default function HostControl() {
       if (audioRef.current) {
         audioRef.current.volume = newMute ? 0 : 0.7
       }
+      if (triviaLogoAudioRef.current) {
+        triviaLogoAudioRef.current.volume = newMute ? 0 : 0.5
+      }
       return newMute
     })
+  }
+
+  // Play random TRIVIA logo music
+  const playRandomTriviaLogo = () => {
+    // Stop any currently playing logo
+    if (triviaLogoAudioRef.current) {
+      triviaLogoAudioRef.current.pause()
+      triviaLogoAudioRef.current = null
+    }
+
+    // Random logo from logo, logo1, logo2, ..., logo8 (9 total)
+    const logoNumber = Math.floor(Math.random() * 9)
+    const logoName = logoNumber === 0 ? 'logo' : `logo${logoNumber}`
+    const logoPath = `/sounds/trivia/${logoName}.mp3`
+
+    console.log('🎵 [TRIVIA] Playing logo:', logoName)
+
+    const audio = new Audio(logoPath)
+    audio.volume = isMuted ? 0 : 0.5
+    audio.loop = true // Loop the logo during the question time
+    audio.play().catch((err) => {
+      console.error('❌ [TRIVIA] Error playing logo:', err)
+    })
+
+    triviaLogoAudioRef.current = audio
+  }
+
+  // Stop TRIVIA logo music
+  const stopTriviaLogo = () => {
+    if (triviaLogoAudioRef.current) {
+      triviaLogoAudioRef.current.pause()
+      triviaLogoAudioRef.current = null
+      console.log('🔇 [TRIVIA] Logo music stopped')
+    }
   }
 
   // Check authentication on mount
@@ -216,12 +254,17 @@ export default function HostControl() {
         setTriviaResults(null)
         setGameStatus('playing')
 
+        // Play random logo music
+        playRandomTriviaLogo()
+
         // Start countdown timer with auto-validation
         if (triviaTimerRef.current) clearInterval(triviaTimerRef.current)
         triviaTimerRef.current = setInterval(() => {
           setTriviaTimeRemaining((prev) => {
             if (prev <= 1) {
               clearInterval(triviaTimerRef.current!)
+              // Stop logo music
+              stopTriviaLogo()
               // Auto-validate when timer expires
               console.log('⏱️ [TRIVIA HOST] Timer expired - auto-validating...')
               setTimeout(() => {
@@ -329,6 +372,9 @@ export default function HostControl() {
       setTriviaResults(data)
       setGameStatus('waiting')
 
+      // Stop logo music
+      stopTriviaLogo()
+
       // Clear timer
       if (triviaTimerRef.current) {
         clearInterval(triviaTimerRef.current)
@@ -363,6 +409,12 @@ export default function HostControl() {
       // Clean up TRIVIA timer
       if (triviaTimerRef.current) {
         clearInterval(triviaTimerRef.current)
+      }
+
+      // Clean up TRIVIA logo audio
+      if (triviaLogoAudioRef.current) {
+        triviaLogoAudioRef.current.pause()
+        triviaLogoAudioRef.current = null
       }
     }
   }, [socket])
@@ -458,6 +510,8 @@ export default function HostControl() {
   const handleValidateQCM = () => {
     if (!socket) return
     console.log('📊 [TRIVIA HOST] Validating QCM answers...')
+    // Stop logo music when validating manually
+    stopTriviaLogo()
     socket.emit('validate_qcm', { roomCode })
   }
 
