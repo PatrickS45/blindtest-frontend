@@ -56,6 +56,11 @@ export default function HostControl() {
   const [triviaQuestionCount, setTriviaQuestionCount] = useState(0)
   const [triviaCategory, setTriviaCategory] = useState<string>('')
   const [triviaDifficulty, setTriviaDifficulty] = useState<string>('')
+  const [triviaCurrentQuestion, setTriviaCurrentQuestion] = useState<any>(null)
+  const [triviaResults, setTriviaResults] = useState<any>(null)
+  const [triviaTimeRemaining, setTriviaTimeRemaining] = useState(20)
+  const triviaTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const [isMuted, setIsMuted] = useState(() => {
     // Load mute state from localStorage
     if (typeof window !== 'undefined') {
@@ -177,6 +182,7 @@ export default function HostControl() {
 
     socket.on('round_started', (data: any) => {
       console.log('🎮 [MODE DEBUG] round_started event received:', data)
+
       // Capture game mode
       if (data.mode) {
         console.log('🎮 [MODE DEBUG] Mode found in data.mode:', data.mode)
@@ -186,6 +192,41 @@ export default function HostControl() {
         setGameMode(data.round.mode)
       } else {
         console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
+      }
+
+      // Update round number
+      if (data.roundNumber !== undefined) {
+        setRoundNumber(data.roundNumber)
+      }
+
+      // Handle TRIVIA mode - data structure: { mode, qcm, track }
+      if (data.mode === 'trivia' && data.qcm?.type === 'trivia') {
+        console.log('🤔 [TRIVIA HOST] Round started with question:', {
+          question: data.qcm.question,
+          category: data.track?.category,
+          difficulty: data.track?.difficulty
+        })
+
+        setTriviaCurrentQuestion({
+          ...data.qcm,
+          category: data.track?.category || '',
+          difficulty: data.track?.difficulty || ''
+        })
+        setTriviaTimeRemaining(20)
+        setTriviaResults(null)
+        setGameStatus('playing')
+
+        // Start countdown timer
+        if (triviaTimerRef.current) clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = setInterval(() => {
+          setTriviaTimeRemaining((prev) => {
+            if (prev <= 1) {
+              clearInterval(triviaTimerRef.current!)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
       }
     })
 
@@ -275,6 +316,23 @@ export default function HostControl() {
       }
     })
 
+    // TRIVIA: QCM results
+    socket.on('qcm_result', (data: any) => {
+      console.log('📊 [TRIVIA HOST] QCM results received:', data)
+      setTriviaResults(data)
+      setGameStatus('waiting')
+
+      // Clear timer
+      if (triviaTimerRef.current) {
+        clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = null
+      }
+
+      // Update leaderboard
+      if (data.leaderboard) setPlayers(data.leaderboard)
+      if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
+    })
+
     return () => {
       socket.off('game_state')
       socket.off('player_joined')
@@ -293,6 +351,12 @@ export default function HostControl() {
       socket.off('resume_audio')
       socket.off('wrong_answer_continue')
       socket.off('round_skipped')
+      socket.off('qcm_result')
+
+      // Clean up TRIVIA timer
+      if (triviaTimerRef.current) {
+        clearInterval(triviaTimerRef.current)
+      }
     }
   }, [socket])
 
@@ -633,8 +697,8 @@ export default function HostControl() {
           </div>
         )}
 
-        {/* Current Track */}
-        {(gameStatus === 'playing' || gameStatus === 'buzzed') && currentTrack && (
+        {/* Current Track - Music modes only */}
+        {(gameStatus === 'playing' || gameStatus === 'buzzed') && currentTrack && gameMode !== 'trivia' && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary animate-fade-in">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Titre en cours</h2>
             <div className="flex items-center gap-4 mb-4">
@@ -682,6 +746,114 @@ export default function HostControl() {
             <Button variant="secondary" size="medium" onClick={handleSkipTrack}>
               ⏭️ Passer
             </Button>
+          </div>
+        )}
+
+        {/* TRIVIA Question in Progress */}
+        {gameStatus === 'playing' && gameMode === 'trivia' && triviaCurrentQuestion && (
+          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-semibold">🧠 Question Quiz Culture</h2>
+              <div className="flex items-center gap-4">
+                {triviaCurrentQuestion.category && (
+                  <span className="text-sm bg-primary/20 text-primary px-3 py-1 rounded-full">
+                    📚 {triviaCurrentQuestion.category}
+                  </span>
+                )}
+                {triviaCurrentQuestion.difficulty && (
+                  <span className="text-sm bg-warning/20 text-warning px-3 py-1 rounded-full">
+                    ⭐ {triviaCurrentQuestion.difficulty}
+                  </span>
+                )}
+                <span className={cn(
+                  "text-2xl font-bold px-4 py-2 rounded-xl",
+                  triviaTimeRemaining <= 5 ? "bg-error/20 text-error animate-pulse" : "bg-success/20 text-success"
+                )}>
+                  ⏱️ {triviaTimeRemaining}s
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-bg-dark rounded-2xl p-6 mb-4">
+              <p className="text-xl text-center font-semibold">
+                {triviaCurrentQuestion.question}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {triviaCurrentQuestion.options?.map((option: any, index: number) => {
+                const labels = ['A', 'B', 'C', 'D']
+                const colors = ['#4A90E2', '#F5A623', '#7B68EE', '#50E3C2']
+
+                return (
+                  <div
+                    key={index}
+                    className="bg-bg-dark rounded-xl p-4 border-2 border-primary/20 flex items-center gap-3"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                      style={{ backgroundColor: colors[index] }}
+                    >
+                      {labels[index]}
+                    </div>
+                    <span className="text-sm">{option.text}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 text-center text-sm text-text-secondary">
+              💡 Les joueurs sont en train de répondre...
+            </div>
+          </div>
+        )}
+
+        {/* TRIVIA Results */}
+        {gameStatus === 'waiting' && gameMode === 'trivia' && triviaResults && (
+          <div className="bg-success/10 rounded-3xl p-6 border-2 border-success">
+            <h2 className="font-display text-xl font-semibold mb-4 text-success">✓ Résultats de la question</h2>
+
+            <div className="bg-bg-card rounded-2xl p-4 mb-4">
+              <p className="text-sm text-text-secondary mb-1">Bonne réponse :</p>
+              <p className="text-xl font-bold text-success">{triviaResults.correctOption}</p>
+            </div>
+
+            <div className="space-y-2">
+              {triviaResults.results?.map((result: any, index: number) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl",
+                    result.isCorrect ? "bg-success/20 border-2 border-success" : "bg-error/20 border-2 border-error"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">
+                      {result.isCorrect ? '✅' : '❌'}
+                    </span>
+                    <span className="font-semibold">{result.playerName}</span>
+                    <span className="text-sm text-text-secondary">→ {result.answer}</span>
+                  </div>
+                  <span className={cn(
+                    "font-bold",
+                    result.isCorrect ? "text-success" : "text-error"
+                  )}>
+                    {result.pointsAwarded > 0 ? '+' : ''}{result.pointsAwarded} pts
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 text-center">
+              <Button
+                variant="primary"
+                size="large"
+                onClick={handleStartRound}
+                className="w-full"
+              >
+                ▶️ Question suivante
+              </Button>
+            </div>
           </div>
         )}
 

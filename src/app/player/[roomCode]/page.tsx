@@ -206,25 +206,35 @@ export default function Player() {
     socket.on('round_started', (data: any) => {
       console.log('🎵 [PLAYER DEBUG] Round started:', data)
 
-      // Update round number
-      setRoundNumber((prev) => prev + 1)
+      // Update round number (comes directly in data)
+      if (data.roundNumber !== undefined) {
+        setRoundNumber(data.roundNumber)
+      }
 
       // Capture game mode
       if (data.mode) {
         console.log('🎮 [MODE DEBUG] Mode found in data.mode:', data.mode)
         setGameMode(data.mode)
-      } else if (data.round?.mode) {
-        console.log('🎮 [MODE DEBUG] Mode found in data.round.mode:', data.round.mode)
-        setGameMode(data.round.mode)
       } else {
         console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
       }
 
-      // Handle TRIVIA mode
-      if (data.mode === 'trivia' && data.round?.qcm?.type === 'trivia') {
-        console.log('🤔 [TRIVIA] Player - Round started with question:', data.round.qcm)
-        setTriviaQuestion(data.round.qcm)
-        setTriviaTimeRemaining(data.round.qcm.timeout || 20)
+      // Handle TRIVIA mode - data structure: { mode, qcm, track }
+      if (data.mode === 'trivia' && data.qcm?.type === 'trivia') {
+        console.log('🤔 [TRIVIA] Player - Round started with question:', {
+          question: data.qcm.question,
+          category: data.track?.category,
+          difficulty: data.track?.difficulty
+        })
+
+        // Set question data from flat structure
+        setTriviaQuestion({
+          ...data.qcm,
+          category: data.track?.category || '',
+          difficulty: data.track?.difficulty || '',
+          timeout: 20
+        })
+        setTriviaTimeRemaining(20)
         setTriviaSelectedOption(null)
         setTriviaMyResult(null)
         setGameStatus('trivia')
