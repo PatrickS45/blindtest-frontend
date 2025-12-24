@@ -388,6 +388,25 @@ export default function HostControl() {
       if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
     })
 
+    // Handle socket disconnection during TRIVIA
+    socket.on('disconnect', (reason: string) => {
+      console.error('❌ [SOCKET] Disconnected:', reason)
+
+      // Stop TRIVIA timer if running
+      if (triviaTimerRef.current) {
+        clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = null
+      }
+
+      // Stop logo music
+      stopTriviaLogo()
+
+      // Alert user if in TRIVIA mode
+      if (gameMode === 'trivia' && triviaCurrentQuestion) {
+        alert('⚠️ Connexion perdue ! La question en cours sera perdue. Rechargez la page.')
+      }
+    })
+
     return () => {
       socket.off('game_state')
       socket.off('player_joined')
@@ -407,6 +426,7 @@ export default function HostControl() {
       socket.off('wrong_answer_continue')
       socket.off('round_skipped')
       socket.off('qcm_result')
+      socket.off('disconnect')
 
       // Clean up TRIVIA timer
       if (triviaTimerRef.current) {
