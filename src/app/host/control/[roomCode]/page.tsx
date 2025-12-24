@@ -59,6 +59,7 @@ export default function HostControl() {
   const [triviaCurrentQuestion, setTriviaCurrentQuestion] = useState<any>(null)
   const [triviaResults, setTriviaResults] = useState<any>(null)
   const [triviaTimeRemaining, setTriviaTimeRemaining] = useState(20)
+  const [triviaLoadingNext, setTriviaLoadingNext] = useState(false)
   const triviaTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const [isMuted, setIsMuted] = useState(() => {
@@ -252,6 +253,7 @@ export default function HostControl() {
         })
         setTriviaTimeRemaining(20)
         setTriviaResults(null)
+        setTriviaLoadingNext(false) // Question loaded successfully
         setGameStatus('playing')
 
         // Play random logo music
@@ -523,9 +525,23 @@ export default function HostControl() {
     }
 
     console.log('▶️ [TRIVIA] Starting next question...')
-    // Reset trivia results
+
+    // Set loading state to prevent double-clicks
+    setTriviaLoadingNext(true)
+
+    // Clean up previous timer to avoid race conditions
+    if (triviaTimerRef.current) {
+      clearInterval(triviaTimerRef.current)
+      triviaTimerRef.current = null
+    }
+
+    // Stop any logo music
+    stopTriviaLogo()
+
+    // Reset trivia state
     setTriviaResults(null)
     setTriviaCurrentQuestion(null)
+    setTriviaTimeRemaining(20)
 
     // Start new round
     socket.emit('start_round', { roomCode })
@@ -949,9 +965,10 @@ export default function HostControl() {
                 variant="primary"
                 size="large"
                 onClick={handleNextTriviaQuestion}
+                disabled={triviaLoadingNext}
                 className="w-full"
               >
-                ▶️ Question suivante
+                {triviaLoadingNext ? '⏳ Chargement...' : '▶️ Question suivante'}
               </Button>
             </div>
           </div>
