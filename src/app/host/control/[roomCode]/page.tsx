@@ -448,6 +448,12 @@ export default function HostControl() {
     })
   }
 
+  const handleValidateQCM = () => {
+    if (!socket) return
+    console.log('📊 [TRIVIA HOST] Validating QCM answers...')
+    socket.emit('validate_qcm', { roomCode })
+  }
+
   const handleSkipTrack = () => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -802,8 +808,19 @@ export default function HostControl() {
               })}
             </div>
 
-            <div className="mt-4 text-center text-sm text-text-secondary">
-              💡 Les joueurs sont en train de répondre...
+            <div className="mt-4 space-y-3">
+              <div className="text-center text-sm text-text-secondary">
+                💡 Les joueurs sont en train de répondre...
+              </div>
+              <Button
+                variant="success"
+                size="large"
+                onClick={handleValidateQCM}
+                className="w-full"
+              >
+                ✓ Valider les réponses
+                {triviaTimeRemaining === 0 && ' (temps écoulé)'}
+              </Button>
             </div>
           </div>
         )}
