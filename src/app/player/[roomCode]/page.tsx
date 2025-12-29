@@ -46,6 +46,7 @@ export default function Player() {
   const [lastResult, setLastResult] = useState<any>(null)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
   const [myBuzzPosition, setMyBuzzPosition] = useState<number | null>(null)
+  const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null)
 
   // Trivia-specific state
   const [triviaQuestion, setTriviaQuestion] = useState<{
@@ -86,6 +87,16 @@ export default function Player() {
       return () => clearInterval(interval)
     }
   }, [answerTimer])
+
+  // Auto-dismiss notification after 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
 
   // Join game
   const handleJoin = () => {
@@ -173,6 +184,33 @@ export default function Player() {
         setMyScore(myPlayer.score || 0)
         setJoined(true)
         setIsJoining(false)
+
+        // ✨ NOUVEAU : Gérer l'état du round actuel
+        if (data.currentRound && data.currentRound.isActive) {
+          console.log('🎮 Round en cours détecté', {
+            roundNumber: data.roundNumber,
+            buzzOrder: data.currentRound.buzzOrder
+          })
+
+          // Vérifier si j'ai déjà buzzé ce round
+          const alreadyBuzzed = data.currentRound.buzzOrder?.some(
+            (buzz: any) => buzz.playerId === myPlayer.id
+          )
+
+          if (alreadyBuzzed) {
+            console.log('⚠️ Vous avez déjà buzzé')
+            setCanBuzz(false)
+            setGameStatus('locked')
+          } else {
+            console.log('✅ Vous pouvez buzzer')
+            setCanBuzz(true)
+            setGameStatus('playing')
+          }
+        } else {
+          console.log('⏸️ Pas de round actif')
+          setCanBuzz(false)
+          setGameStatus('waiting')
+        }
       }
     })
 
@@ -277,6 +315,30 @@ export default function Player() {
       // Store buzz position for reflexoquiz mode
       if (data.playerName === playerName && data.position) {
         setMyBuzzPosition(data.position)
+      }
+    })
+
+    // ✨ NOUVEAU : Confirmation que mon buzz a été accepté
+    socket.on('buzz_confirmed', (data: any) => {
+      console.log('✅ Mon buzz est confirmé !', data.position)
+      // Feedback visuel immédiat (le bouton est déjà désactivé)
+      // L'événement buzz_locked suivra avec les détails
+    })
+
+    // ✨ NOUVEAU : Mon buzz a été rejeté
+    socket.on('buzz_rejected', (data: any) => {
+      console.log('❌ Buzz rejeté:', data.message)
+
+      // Afficher la notification d'erreur
+      setNotification({
+        message: data.message || 'Buzz rejeté',
+        type: 'error'
+      })
+
+      // Réactiver le bouton si c'était juste un problème de timing
+      // En mode ACCUMUL_POINTS, le joueur peut rebuzzer
+      if (gameStatus === 'playing') {
+        setCanBuzz(true)
       }
     })
 
@@ -393,6 +455,8 @@ export default function Player() {
       socket.off('player_joined_team')
       socket.off('round_started')
       socket.off('buzz_locked')
+      socket.off('buzz_confirmed')
+      socket.off('buzz_rejected')
       socket.off('timeout_warning')
       socket.off('round_result')
       socket.off('wrong_answer_continue')
@@ -404,7 +468,21 @@ export default function Player() {
 
   const handleBuzz = () => {
     if (!socket) return
+
+    console.log('🔔 Tentative de buzz...')
+
+    // Désactiver immédiatement pour éviter les double-clics
+    setCanBuzz(false)
+
+    // Envoyer le buzz au serveur
     socket.emit('buzz', { roomCode })
+
+    // Timeout au cas où le serveur ne répond pas
+    setTimeout(() => {
+      // Le serveur devrait répondre avec buzz_confirmed ou buzz_rejected
+      // Si rien après 3 secondes, problème réseau potentiel
+      console.warn('⚠️ Pas de réponse du serveur après 3s')
+    }, 3000)
   }
 
   const handleTriviaAnswer = (optionIndex: number) => {
@@ -624,6 +702,28 @@ export default function Player() {
           </div>
         )}
       </div>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div
+          className={cn(
+            'fixed top-20 right-4 p-4 rounded-xl shadow-2xl z-50 animate-fade-in',
+            'max-w-sm',
+            notification.type === 'error' && 'bg-error text-white',
+            notification.type === 'success' && 'bg-success text-white',
+            notification.type === 'info' && 'bg-primary text-white'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">
+              {notification.type === 'error' && '❌'}
+              {notification.type === 'success' && '✅'}
+              {notification.type === 'info' && 'ℹ️'}
+            </span>
+            <p className="font-semibold">{notification.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

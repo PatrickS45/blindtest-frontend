@@ -76,6 +76,22 @@ export type GameState =
 
 export type PlayMode = 'solo' | 'team'
 
+// ==========================================
+// SCORING CONFIGURATION
+// ==========================================
+
+export interface ScoringConfig {
+  pointsFullCorrect: number      // Points si artiste ET titre corrects
+  pointsPartialCorrect: number   // Points si 1 sur 2 correct
+  pointsBothWrong: number         // Pénalité si les 2 sont faux (généralement négatif)
+}
+
+export const DEFAULT_SCORING: ScoringConfig = {
+  pointsFullCorrect: 10,
+  pointsPartialCorrect: 5,
+  pointsBothWrong: -5,
+}
+
 export interface GameSession {
   roomCode: string
   mode: GameMode
@@ -88,6 +104,7 @@ export interface GameSession {
   totalRounds: number
   playlistId?: string
   playlistName?: string
+  scoringConfig?: ScoringConfig // Configuration de scoring personnalisée
   createdAt: Date
 }
 
@@ -174,6 +191,15 @@ export interface BuzzData {
   buzzerSound: number
   timestamp: Date
   order?: number // For reflexoquiz mode (1st, 2nd, 3rd)
+}
+
+// ==========================================
+// ANSWER VALIDATION
+// ==========================================
+
+export interface DetailedAnswer {
+  artistCorrect: boolean
+  titleCorrect: boolean
 }
 
 // ==========================================

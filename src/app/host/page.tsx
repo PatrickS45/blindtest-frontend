@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ModeCard } from '@/components/modes/ModeCard'
 import { Button } from '@/components/ui/Button'
 import { GAME_MODES } from '@/lib/constants'
-import { GameMode, PlayMode } from '@/types/game'
+import { GameMode, PlayMode, DEFAULT_SCORING, ScoringConfig } from '@/types/game'
 import { useSocket } from '@/hooks/useSocket'
 import { cn } from '@/lib/utils'
 import { isHostAuthenticated } from '@/lib/auth'
@@ -20,6 +20,7 @@ export default function HostModSelection() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [numberOfRounds, setNumberOfRounds] = useState(10)
   const [randomStart, setRandomStart] = useState(true)
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(DEFAULT_SCORING)
 
   // Check authentication on mount
   useEffect(() => {
@@ -46,7 +47,8 @@ export default function HostModSelection() {
           numberOfRounds,
           randomStart,
           numberOfTeams: playMode === 'team' ? numberOfTeams : undefined
-        }
+        },
+        scoringConfig
       })
 
       // Listen for game creation response
@@ -236,7 +238,7 @@ export default function HostModSelection() {
               </div>
 
               {/* Random Start Toggle */}
-              <div className="flex items-center justify-between p-4 bg-bg-dark rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-bg-dark rounded-xl mb-6">
                 <div>
                   <p className="font-semibold text-text-primary mb-1">
                     🎲 Démarrage aléatoire
@@ -259,6 +261,106 @@ export default function HostModSelection() {
                     )}
                   />
                 </button>
+              </div>
+
+              {/* Scoring Configuration */}
+              <div className="p-6 bg-bg-dark rounded-xl border-2 border-primary/20">
+                <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+                  🎯 Configuration du système de points
+                </h4>
+
+                {/* Points for Full Correct */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-text-primary">
+                      Artiste + Titre corrects
+                    </label>
+                    <span className="text-xl font-bold text-success">
+                      +{scoringConfig.pointsFullCorrect}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={scoringConfig.pointsFullCorrect}
+                    onChange={(e) =>
+                      setScoringConfig({
+                        ...scoringConfig,
+                        pointsFullCorrect: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-2 bg-bg-medium rounded-lg appearance-none cursor-pointer accent-success"
+                  />
+                  <div className="flex justify-between text-xs text-text-secondary mt-1">
+                    <span>1 pt</span>
+                    <span>20 pts</span>
+                  </div>
+                </div>
+
+                {/* Points for Partial Correct */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-text-primary">
+                      1 bonne réponse sur 2 (artiste OU titre)
+                    </label>
+                    <span className="text-xl font-bold text-warning">
+                      +{scoringConfig.pointsPartialCorrect}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="15"
+                    value={scoringConfig.pointsPartialCorrect}
+                    onChange={(e) =>
+                      setScoringConfig({
+                        ...scoringConfig,
+                        pointsPartialCorrect: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-2 bg-bg-medium rounded-lg appearance-none cursor-pointer accent-warning"
+                  />
+                  <div className="flex justify-between text-xs text-text-secondary mt-1">
+                    <span>0 pt</span>
+                    <span>15 pts</span>
+                  </div>
+                </div>
+
+                {/* Penalty for Both Wrong */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-text-primary">
+                      Les 2 réponses fausses (pénalité)
+                    </label>
+                    <span className="text-xl font-bold text-error">
+                      {scoringConfig.pointsBothWrong}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="0"
+                    value={scoringConfig.pointsBothWrong}
+                    onChange={(e) =>
+                      setScoringConfig({
+                        ...scoringConfig,
+                        pointsBothWrong: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-2 bg-bg-medium rounded-lg appearance-none cursor-pointer accent-error"
+                  />
+                  <div className="flex justify-between text-xs text-text-secondary mt-1">
+                    <span>-10 pts</span>
+                    <span>0 pt</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-bg-medium rounded-lg">
+                  <p className="text-xs text-text-secondary">
+                    💡 <strong>Astuce :</strong> Ces points s'appliquent lors de la validation des réponses par l'hôte.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
