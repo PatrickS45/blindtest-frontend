@@ -50,6 +50,18 @@ export default function HostControl() {
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
   const [gameMode, setGameMode] = useState<string>('accumul_points')
   const [wrongAnswerFeedback, setWrongAnswerFeedback] = useState(false)
+
+  // TRIVIA-specific states
+  const [triviaLoaded, setTriviaLoaded] = useState(false)
+  const [triviaQuestionCount, setTriviaQuestionCount] = useState(0)
+  const [triviaCategory, setTriviaCategory] = useState<string>('')
+  const [triviaDifficulty, setTriviaDifficulty] = useState<string>('')
+  const [triviaCurrentQuestion, setTriviaCurrentQuestion] = useState<any>(null)
+  const [triviaResults, setTriviaResults] = useState<any>(null)
+  const [triviaTimeRemaining, setTriviaTimeRemaining] = useState(20)
+  const [triviaLoadingNext, setTriviaLoadingNext] = useState(false)
+  const triviaTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const [isMuted, setIsMuted] = useState(() => {
     // Load mute state from localStorage
     if (typeof window !== 'undefined') {
@@ -65,6 +77,7 @@ export default function HostControl() {
   const [waitingForHostDecision, setWaitingForHostDecision] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const triviaLogoAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Toggle mute function
   const toggleMute = () => {
@@ -75,8 +88,45 @@ export default function HostControl() {
       if (audioRef.current) {
         audioRef.current.volume = newMute ? 0 : 0.7
       }
+      if (triviaLogoAudioRef.current) {
+        triviaLogoAudioRef.current.volume = newMute ? 0 : 0.5
+      }
       return newMute
     })
+  }
+
+  // Play random TRIVIA logo music
+  const playRandomTriviaLogo = () => {
+    // Stop any currently playing logo
+    if (triviaLogoAudioRef.current) {
+      triviaLogoAudioRef.current.pause()
+      triviaLogoAudioRef.current = null
+    }
+
+    // Random logo from Logo, Logo1, Logo2, ..., Logo8 (9 total)
+    const logoNumber = Math.floor(Math.random() * 9)
+    const logoName = logoNumber === 0 ? 'Logo' : `Logo${logoNumber}`
+    const logoPath = `/sounds/trivia/${logoName}.mp3`
+
+    console.log('🎵 [TRIVIA] Playing logo:', logoName)
+
+    const audio = new Audio(logoPath)
+    audio.volume = isMuted ? 0 : 0.5
+    audio.loop = true // Loop the logo during the question time
+    audio.play().catch((err) => {
+      console.error('❌ [TRIVIA] Error playing logo:', err)
+    })
+
+    triviaLogoAudioRef.current = audio
+  }
+
+  // Stop TRIVIA logo music
+  const stopTriviaLogo = () => {
+    if (triviaLogoAudioRef.current) {
+      triviaLogoAudioRef.current.pause()
+      triviaLogoAudioRef.current = null
+      console.log('🔇 [TRIVIA] Logo music stopped')
+    }
   }
 
   // Check authentication on mount
@@ -176,6 +226,7 @@ export default function HostControl() {
 
     socket.on('round_started', (data: any) => {
       console.log('🎮 [MODE DEBUG] round_started event received:', data)
+
       // Capture game mode
       if (data.mode) {
         console.log('🎮 [MODE DEBUG] Mode found in data.mode:', data.mode)
@@ -185,6 +236,54 @@ export default function HostControl() {
         setGameMode(data.round.mode)
       } else {
         console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
+      }
+
+      // Update round number
+      if (data.roundNumber !== undefined) {
+        setRoundNumber(data.roundNumber)
+      }
+
+      // Handle TRIVIA mode - data structure: { mode, qcm, track }
+      if (data.mode === 'trivia' && data.qcm?.type === 'trivia') {
+        console.log('🤔 [TRIVIA HOST] Round started with question:', {
+          question: data.qcm.question,
+          category: data.track?.category,
+          difficulty: data.track?.difficulty
+        })
+
+        setTriviaCurrentQuestion({
+          ...data.qcm,
+          category: data.track?.category || '',
+          difficulty: data.track?.difficulty || ''
+        })
+        setTriviaTimeRemaining(20)
+        setTriviaResults(null)
+        setTriviaLoadingNext(false) // Question loaded successfully
+        setGameStatus('playing')
+
+        // Play random logo music
+        playRandomTriviaLogo()
+
+        // Start countdown timer with auto-validation
+        if (triviaTimerRef.current) clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = setInterval(() => {
+          setTriviaTimeRemaining((prev) => {
+            if (prev <= 1) {
+              clearInterval(triviaTimerRef.current!)
+              // Stop logo music
+              stopTriviaLogo()
+              // Auto-validate when timer expires
+              console.log('⏱️ [TRIVIA HOST] Timer expired - auto-validating...')
+              setTimeout(() => {
+                if (socket) {
+                  socket.emit('validate_qcm', { roomCode })
+                }
+              }, 500) // Small delay to ensure all answers are received
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
       }
     })
 
@@ -301,6 +400,45 @@ export default function HostControl() {
       }
     })
 
+    // TRIVIA: QCM results
+    socket.on('qcm_result', (data: any) => {
+      console.log('📊 [TRIVIA HOST] QCM results received:', data)
+      setTriviaResults(data)
+      setGameStatus('waiting')
+
+      // Stop logo music
+      stopTriviaLogo()
+
+      // Clear timer
+      if (triviaTimerRef.current) {
+        clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = null
+      }
+
+      // Update leaderboard
+      if (data.leaderboard) setPlayers(data.leaderboard)
+      if (data.teamLeaderboard) setTeams(data.teamLeaderboard)
+    })
+
+    // Handle socket disconnection during TRIVIA
+    socket.on('disconnect', (reason: string) => {
+      console.error('❌ [SOCKET] Disconnected:', reason)
+
+      // Stop TRIVIA timer if running
+      if (triviaTimerRef.current) {
+        clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = null
+      }
+
+      // Stop logo music
+      stopTriviaLogo()
+
+      // Alert user if in TRIVIA mode
+      if (gameMode === 'trivia' && triviaCurrentQuestion) {
+        alert('⚠️ Connexion perdue ! La question en cours sera perdue. Rechargez la page.')
+      }
+    })
+
     return () => {
       socket.off('game_state')
       socket.off('player_joined')
@@ -319,6 +457,19 @@ export default function HostControl() {
       socket.off('resume_audio')
       socket.off('wrong_answer_continue')
       socket.off('round_skipped')
+      socket.off('qcm_result')
+      socket.off('disconnect')
+
+      // Clean up TRIVIA timer
+      if (triviaTimerRef.current) {
+        clearInterval(triviaTimerRef.current)
+      }
+
+      // Clean up TRIVIA logo audio
+      if (triviaLogoAudioRef.current) {
+        triviaLogoAudioRef.current.pause()
+        triviaLogoAudioRef.current = null
+      }
     }
   }, [socket])
 
@@ -355,11 +506,48 @@ export default function HostControl() {
     })
   }
 
+  const handleLoadTriviaQuestions = () => {
+    if (!socket) return
+
+    setIsLoadingPlaylist(true) // Reuse loading state
+    console.log('🤔 Loading trivia questions...')
+
+    socket.emit('load_trivia_questions', {
+      roomCode,
+      provider: 'trivia',
+      category: triviaCategory || undefined,
+      difficulty: triviaDifficulty || undefined,
+    })
+
+    // Listen for trivia loaded event
+    socket.once('trivia_loaded', (data: any) => {
+      setIsLoadingPlaylist(false)
+      setTriviaLoaded(true)
+      setTriviaQuestionCount(data.questionCount)
+      console.log('✅ Trivia loaded:', data.questionCount, 'questions')
+    })
+
+    socket.once('error', (data: any) => {
+      setIsLoadingPlaylist(false)
+      alert('Erreur chargement questions : ' + data.message)
+    })
+  }
+
   const handleStartRound = () => {
-    if (!socket || !playlist) {
-      console.log('❌ Cannot start round - socket:', !!socket, 'playlist:', !!playlist)
-      return
+    // For TRIVIA mode, check if trivia is loaded instead of playlist
+    if (gameMode === 'trivia') {
+      if (!socket || !triviaLoaded) {
+        console.log('❌ Cannot start TRIVIA round - socket:', !!socket, 'triviaLoaded:', triviaLoaded)
+        return
+      }
+    } else {
+      // For music modes, check playlist
+      if (!socket || !playlist) {
+        console.log('❌ Cannot start round - socket:', !!socket, 'playlist:', !!playlist)
+        return
+      }
     }
+
     console.log('▶️ Starting round - roomCode:', roomCode, 'socket.id:', socket.id, 'connected:', socket.connected)
     socket.emit('start_round', { roomCode })
   }
@@ -393,6 +581,44 @@ export default function HostControl() {
   const handleEndRound = () => {
     if (!socket) return
     socket.emit('end_round', { roomCode })
+  }
+
+  const handleValidateQCM = () => {
+    if (!socket) return
+    console.log('📊 [TRIVIA HOST] Validating QCM answers...')
+    // Stop logo music when validating manually
+    stopTriviaLogo()
+    socket.emit('validate_qcm', { roomCode })
+  }
+
+  const handleNextTriviaQuestion = () => {
+    if (!socket || !socket.connected) {
+      console.error('❌ [TRIVIA] Socket not connected')
+      alert('Connexion perdue. Rechargez la page.')
+      return
+    }
+
+    console.log('▶️ [TRIVIA] Starting next question...')
+
+    // Set loading state to prevent double-clicks
+    setTriviaLoadingNext(true)
+
+    // Clean up previous timer to avoid race conditions
+    if (triviaTimerRef.current) {
+      clearInterval(triviaTimerRef.current)
+      triviaTimerRef.current = null
+    }
+
+    // Stop any logo music
+    stopTriviaLogo()
+
+    // Reset trivia state
+    setTriviaResults(null)
+    setTriviaCurrentQuestion(null)
+    setTriviaTimeRemaining(20)
+
+    // Start new round
+    socket.emit('start_round', { roomCode })
   }
 
   const handleSkipTrack = () => {
@@ -505,8 +731,76 @@ export default function HostControl() {
           </div>
         </div>
 
-        {/* Playlist Configuration */}
-        {gameStatus === 'waiting' && !playlist && (
+        {/* TRIVIA Configuration */}
+        {gameStatus === 'waiting' && gameMode === 'trivia' && !triviaLoaded && (
+          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
+            <h2 className="font-display text-xl font-semibold mb-4">🧠 Configuration Quiz Culture</h2>
+            <div className="space-y-4">
+              <div className="bg-primary/10 border-2 border-primary/30 rounded-xl p-4">
+                <p className="text-sm text-text-secondary">
+                  💡 <strong>596 questions</strong> de culture générale disponibles
+                  <br />
+                  Les questions sont automatiquement chargées depuis l'API Trivia
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-text-secondary mb-2">
+                    Catégorie (optionnel)
+                  </label>
+                  <select
+                    value={triviaCategory}
+                    onChange={(e) => setTriviaCategory(e.target.value)}
+                    className="w-full bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none"
+                  >
+                    <option value="">Toutes</option>
+                    <option value="histoire">Histoire</option>
+                    <option value="geographie">Géographie</option>
+                    <option value="sciences">Sciences</option>
+                    <option value="cinema">Cinéma</option>
+                    <option value="musique">Musique</option>
+                    <option value="sport">Sport</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-text-secondary mb-2">
+                    Difficulté (optionnel)
+                  </label>
+                  <select
+                    value={triviaDifficulty}
+                    onChange={(e) => setTriviaDifficulty(e.target.value)}
+                    className="w-full bg-bg-dark text-text-primary px-4 py-3 rounded-xl border-2 border-primary/30 focus:border-primary focus:outline-none"
+                  >
+                    <option value="">Toutes</option>
+                    <option value="facile">Facile</option>
+                    <option value="normal">Normal</option>
+                    <option value="difficile">Difficile</option>
+                  </select>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                size="large"
+                onClick={handleLoadTriviaQuestions}
+                disabled={isLoadingPlaylist}
+                loading={isLoadingPlaylist}
+                className="w-full"
+              >
+                🧠 Charger les questions
+              </Button>
+
+              <p className="text-xs text-text-secondary">
+                ℹ️ Les questions seront mélangées aléatoirement à chaque partie
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Playlist Configuration (pour modes musicaux) */}
+        {gameStatus === 'waiting' && gameMode !== 'trivia' && !playlist && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Configuration Playlist</h2>
             <div className="space-y-4">
@@ -550,8 +844,23 @@ export default function HostControl() {
           </div>
         )}
 
-        {/* Playlist Loaded */}
-        {playlist && gameStatus === 'waiting' && (
+        {/* TRIVIA Questions Loaded */}
+        {triviaLoaded && gameStatus === 'waiting' && gameMode === 'trivia' && (
+          <div className="bg-success/10 rounded-3xl p-6 border-2 border-success">
+            <h2 className="font-display text-xl font-semibold mb-2 text-success">✓ Questions chargées</h2>
+            <p className="text-text-primary">
+              <strong>{triviaQuestionCount} questions</strong> de culture générale prêtes
+            </p>
+            <p className="text-text-secondary text-sm">
+              {triviaCategory && `Catégorie: ${triviaCategory}`}
+              {triviaCategory && triviaDifficulty && ' • '}
+              {triviaDifficulty && `Difficulté: ${triviaDifficulty}`}
+            </p>
+          </div>
+        )}
+
+        {/* Playlist Loaded (pour modes musicaux) */}
+        {playlist && gameStatus === 'waiting' && gameMode !== 'trivia' && (
           <div className="bg-success/10 rounded-3xl p-6 border-2 border-success">
             <h2 className="font-display text-xl font-semibold mb-2 text-success">✓ Playlist chargée</h2>
             <p className="text-text-primary">
@@ -561,8 +870,8 @@ export default function HostControl() {
           </div>
         )}
 
-        {/* Current Track */}
-        {(gameStatus === 'playing' || gameStatus === 'buzzed') && currentTrack && (
+        {/* Current Track - Music modes only */}
+        {(gameStatus === 'playing' || gameStatus === 'buzzed') && currentTrack && gameMode !== 'trivia' && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary animate-fade-in">
             <h2 className="font-display text-xl font-semibold mb-4">🎵 Titre en cours</h2>
             <div className="flex items-center gap-4 mb-4">
@@ -610,6 +919,132 @@ export default function HostControl() {
             <Button variant="secondary" size="medium" onClick={handleSkipTrack}>
               ⏭️ Passer
             </Button>
+          </div>
+        )}
+
+        {/* TRIVIA Question in Progress */}
+        {gameStatus === 'playing' && gameMode === 'trivia' && triviaCurrentQuestion && (
+          <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-semibold">🧠 Question Quiz Culture</h2>
+              <div className="flex items-center gap-4">
+                {triviaCurrentQuestion.category && (
+                  <span className="text-sm bg-primary/20 text-primary px-3 py-1 rounded-full">
+                    📚 {triviaCurrentQuestion.category}
+                  </span>
+                )}
+                {triviaCurrentQuestion.difficulty && (
+                  <span className="text-sm bg-warning/20 text-warning px-3 py-1 rounded-full">
+                    ⭐ {triviaCurrentQuestion.difficulty}
+                  </span>
+                )}
+                <span className={cn(
+                  "text-2xl font-bold px-4 py-2 rounded-xl",
+                  triviaTimeRemaining <= 5 ? "bg-error/20 text-error animate-pulse" : "bg-success/20 text-success"
+                )}>
+                  ⏱️ {triviaTimeRemaining}s
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-bg-dark rounded-2xl p-6 mb-4">
+              <p className="text-xl text-center font-semibold">
+                {triviaCurrentQuestion.question}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {triviaCurrentQuestion.options?.map((option: any, index: number) => {
+                const labels = ['A', 'B', 'C', 'D']
+                const colors = ['#4A90E2', '#F5A623', '#7B68EE', '#50E3C2']
+
+                return (
+                  <div
+                    key={index}
+                    className="bg-bg-dark rounded-xl p-4 border-2 border-primary/20 flex items-center gap-3"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                      style={{ backgroundColor: colors[index] }}
+                    >
+                      {labels[index]}
+                    </div>
+                    <span className="text-sm">{option.text}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="text-center text-sm text-text-secondary">
+                💡 Les joueurs sont en train de répondre...
+                {triviaTimeRemaining > 0 && (
+                  <div className="mt-2 text-xs">
+                    ⏱️ Validation automatique dans {triviaTimeRemaining}s
+                  </div>
+                )}
+              </div>
+              {triviaTimeRemaining > 0 && (
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleValidateQCM}
+                  className="w-full"
+                >
+                  ⏭️ Valider maintenant (anticipé)
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TRIVIA Results */}
+        {gameStatus === 'waiting' && gameMode === 'trivia' && triviaResults && (
+          <div className="bg-success/10 rounded-3xl p-6 border-2 border-success">
+            <h2 className="font-display text-xl font-semibold mb-4 text-success">✓ Résultats de la question</h2>
+
+            <div className="bg-bg-card rounded-2xl p-4 mb-4">
+              <p className="text-sm text-text-secondary mb-1">Bonne réponse :</p>
+              <p className="text-xl font-bold text-success">{triviaResults.correctOption}</p>
+            </div>
+
+            <div className="space-y-2">
+              {triviaResults.results?.map((result: any, index: number) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl",
+                    result.isCorrect ? "bg-success/20 border-2 border-success" : "bg-error/20 border-2 border-error"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">
+                      {result.isCorrect ? '✅' : '❌'}
+                    </span>
+                    <span className="font-semibold">{result.playerName}</span>
+                    <span className="text-sm text-text-secondary">→ {result.answer}</span>
+                  </div>
+                  <span className={cn(
+                    "font-bold",
+                    result.isCorrect ? "text-success" : "text-error"
+                  )}>
+                    {result.pointsAwarded > 0 ? '+' : ''}{result.pointsAwarded} pts
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 text-center">
+              <Button
+                variant="primary"
+                size="large"
+                onClick={handleNextTriviaQuestion}
+                disabled={triviaLoadingNext}
+                className="w-full"
+              >
+                {triviaLoadingNext ? '⏳ Chargement...' : '▶️ Question suivante'}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -749,7 +1184,8 @@ export default function HostControl() {
         )}
 
         {/* Team Management (Team Mode Only) */}
-        {playMode === 'team' && gameStatus === 'waiting' && !playlist && (
+        {playMode === 'team' && gameStatus === 'waiting' &&
+         ((gameMode === 'trivia' && !triviaLoaded) || (gameMode !== 'trivia' && !playlist)) && (
           <div className="bg-bg-card rounded-3xl p-6 border-2 border-primary/20">
             <TeamManagement
               teams={teams}
@@ -806,7 +1242,10 @@ export default function HostControl() {
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-bg-card border-t-2 border-primary/20 p-4 z-20">
         <div className="max-w-7xl mx-auto">
-          {gameStatus === 'waiting' && playlist && players.length > 0 && (
+          {/* Show start button if content is loaded (playlist OR trivia) and players present */}
+          {gameStatus === 'waiting' &&
+           ((gameMode === 'trivia' && triviaLoaded) || (gameMode !== 'trivia' && playlist)) &&
+           players.length > 0 && (
             <Button
               variant="primary"
               size="xl"
@@ -823,10 +1262,12 @@ export default function HostControl() {
             </Button>
           )}
 
-          {gameStatus === 'waiting' && (!playlist || players.length === 0) && (
+          {gameStatus === 'waiting' &&
+           (((gameMode === 'trivia' && !triviaLoaded) || (gameMode !== 'trivia' && !playlist)) || players.length === 0) && (
             <div className="text-center text-text-secondary">
-              {!playlist && '📝 Charge une playlist pour commencer'}
-              {playlist && players.length === 0 && '⏳ En attente de joueurs...'}
+              {gameMode === 'trivia' && !triviaLoaded && '🧠 Charge les questions pour commencer'}
+              {gameMode !== 'trivia' && !playlist && '📝 Charge une playlist pour commencer'}
+              {((gameMode === 'trivia' && triviaLoaded) || (gameMode !== 'trivia' && playlist)) && players.length === 0 && '⏳ En attente de joueurs...'}
             </div>
           )}
         </div>

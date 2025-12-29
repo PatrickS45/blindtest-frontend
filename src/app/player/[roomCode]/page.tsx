@@ -6,8 +6,10 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSoundEffect } from '@/hooks/useAudio'
 import { Buzzer } from '@/components/game/Buzzer'
 import { TeamSelector } from '@/components/team/TeamSelector'
-import { Team, PlayMode } from '@/types/game'
+import { Team, PlayMode, TriviaOption } from '@/types/game'
 import { cn } from '@/lib/utils'
+import { TriviaPlayerView, TriviaWaiting } from '@/components/game/TriviaPlayerView'
+import { getSoundManager } from '@/utils/SoundManager'
 
 // Helper to get position badge for Reflexoquiz mode
 function getPositionBadge(position: number | null) {
@@ -34,7 +36,7 @@ export default function Player() {
   const [teams, setTeams] = useState<Team[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
   const [teamSelected, setTeamSelected] = useState(false)
-  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'locked'>('waiting')
+  const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'locked' | 'trivia'>('waiting')
   const [canBuzz, setCanBuzz] = useState(false)
   const [buzzedPlayer, setBuzzedPlayer] = useState('')
   const [myScore, setMyScore] = useState(0)
@@ -46,7 +48,27 @@ export default function Player() {
   const [myBuzzPosition, setMyBuzzPosition] = useState<number | null>(null)
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null)
 
+  // Trivia-specific state
+  const [triviaQuestion, setTriviaQuestion] = useState<{
+    question: string
+    options: TriviaOption[]
+    category?: string
+    difficulty?: string
+    timeout: number
+  } | null>(null)
+  const [triviaSelectedOption, setTriviaSelectedOption] = useState<number | null>(null)
+  const [triviaTimeRemaining, setTriviaTimeRemaining] = useState(20)
+  const [triviaMyResult, setTriviaMyResult] = useState<{
+    isCorrect: boolean
+    pointsAwarded: number
+    newScore: number
+  } | null>(null)
+
   const myBuzzerSoundRef = useRef<number | null>(null)
+  const soundManagerRef = useRef(getSoundManager(80))
+  const triviaTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isJoiningRef = useRef(false)
+  const joinTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Get player name from localStorage
   useEffect(() => {
@@ -93,16 +115,23 @@ export default function Player() {
     // Save player name
     localStorage.setItem('blindtest_player_name', playerName)
 
+    // Mark as joining (use ref to avoid race condition)
+    isJoiningRef.current = true
+    setIsJoining(true)
+
     // Emit join request
     socket.emit('join_game', { roomCode, playerName })
 
-    // Mark as joining (will be confirmed by player_joined event)
-    setIsJoining(true)
+    // Clear any existing timeout
+    if (joinTimeoutRef.current) {
+      clearTimeout(joinTimeoutRef.current)
+    }
 
     // Timeout in case server doesn't respond (10 seconds)
-    setTimeout(() => {
-      if (!joined) {
+    joinTimeoutRef.current = setTimeout(() => {
+      if (isJoiningRef.current) {
         console.error('❌ [JOIN DEBUG] Join timeout - server did not respond')
+        isJoiningRef.current = false
         setIsJoining(false)
         alert('Erreur: Impossible de rejoindre la partie. Vérifiez le code de la salle.')
       }
@@ -139,10 +168,19 @@ export default function Player() {
     socket.on('player_joined', (data: any) => {
       console.log('👥 [JOIN DEBUG] player_joined event received:', data)
 
-      // Check if it's me who just joined
+      // Check if it's me who just joined (use ref to avoid race condition)
       const myPlayer = data.players?.find((p: any) => p.name === playerName)
-      if (myPlayer && isJoining) {
+      if (myPlayer && isJoiningRef.current) {
         console.log('✅ [JOIN DEBUG] Successfully joined! My player:', myPlayer)
+
+        // Clear join timeout
+        if (joinTimeoutRef.current) {
+          clearTimeout(joinTimeoutRef.current)
+          joinTimeoutRef.current = null
+        }
+
+        // Update state
+        isJoiningRef.current = false
         setMyScore(myPlayer.score || 0)
         setJoined(true)
         setIsJoining(false)
@@ -179,8 +217,14 @@ export default function Player() {
     return () => {
       socket.off('game_state')
       socket.off('player_joined')
+
+      // Clean up join timeout on unmount
+      if (joinTimeoutRef.current) {
+        clearTimeout(joinTimeoutRef.current)
+        joinTimeoutRef.current = null
+      }
     }
-  }, [socket, playerName, isJoining])
+  }, [socket, playerName])
 
   // Socket event listeners - Game events (only when joined)
   useEffect(() => {
@@ -199,24 +243,66 @@ export default function Player() {
 
     socket.on('round_started', (data: any) => {
       console.log('🎵 [PLAYER DEBUG] Round started:', data)
-      setGameStatus('playing')
-      setCanBuzz(true)
-      setLastResult(null)
-      setBuzzedPlayer('')
-      setAnswerTimer(0)
-      setRoundNumber((prev) => prev + 1)
-      setMyBuzzPosition(null)
+
+      // Update round number (comes directly in data)
+      if (data.roundNumber !== undefined) {
+        setRoundNumber(data.roundNumber)
+      }
 
       // Capture game mode
       if (data.mode) {
         console.log('🎮 [MODE DEBUG] Mode found in data.mode:', data.mode)
         setGameMode(data.mode)
-      } else if (data.round?.mode) {
-        console.log('🎮 [MODE DEBUG] Mode found in data.round.mode:', data.round.mode)
-        setGameMode(data.round.mode)
       } else {
         console.warn('⚠️ [MODE DEBUG] No mode found in round_started event!')
       }
+
+      // Handle TRIVIA mode - data structure: { mode, qcm, track }
+      if (data.mode === 'trivia' && data.qcm?.type === 'trivia') {
+        console.log('🤔 [TRIVIA] Player - Round started with question:', {
+          question: data.qcm.question,
+          category: data.track?.category,
+          difficulty: data.track?.difficulty
+        })
+
+        // Set question data from flat structure
+        setTriviaQuestion({
+          ...data.qcm,
+          category: data.track?.category || '',
+          difficulty: data.track?.difficulty || '',
+          timeout: 20
+        })
+        setTriviaTimeRemaining(20)
+        setTriviaSelectedOption(null)
+        setTriviaMyResult(null)
+        setGameStatus('trivia')
+
+        // Start countdown
+        if (triviaTimerRef.current) clearInterval(triviaTimerRef.current)
+        triviaTimerRef.current = setInterval(() => {
+          setTriviaTimeRemaining((prev) => {
+            if (prev <= 1) {
+              clearInterval(triviaTimerRef.current!)
+              soundManagerRef.current.play('timeUp')
+              return 0
+            }
+            if (prev === 6) {
+              soundManagerRef.current.play('countdownUrgent')
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        return
+      }
+
+      // Default behavior for other modes
+      setGameStatus('playing')
+      setCanBuzz(true)
+      setLastResult(null)
+      setBuzzedPlayer('')
+      setAnswerTimer(0)
+      setMyBuzzPosition(null)
     })
 
     socket.on('buzz_locked', (data: any) => {
@@ -321,6 +407,44 @@ export default function Player() {
       }
     })
 
+    socket.on('qcm_result', (data: any) => {
+      console.log('📊 [TRIVIA] Player - QCM Results received:', data)
+
+      if (triviaTimerRef.current) clearInterval(triviaTimerRef.current)
+
+      // Find my result
+      const myResult = data.results.find((r: any) => r.playerName === playerName)
+      if (myResult) {
+        setTriviaMyResult({
+          isCorrect: myResult.isCorrect,
+          pointsAwarded: myResult.pointsAwarded,
+          newScore: myResult.newScore,
+        })
+        setMyScore(myResult.newScore)
+
+        // Play sound and vibration
+        if (myResult.isCorrect) {
+          soundManagerRef.current.play('correct')
+          if ('vibrate' in navigator) {
+            navigator.vibrate([50, 50, 50]) // Happy vibration
+          }
+        } else {
+          soundManagerRef.current.play('wrong')
+          if ('vibrate' in navigator) {
+            navigator.vibrate([200]) // Sad vibration
+          }
+        }
+      }
+
+      // Reset after 8 seconds
+      setTimeout(() => {
+        setGameStatus('waiting')
+        setTriviaQuestion(null)
+        setTriviaMyResult(null)
+        setTriviaSelectedOption(null)
+      }, 8000)
+    })
+
     socket.on('game_ended', () => {
       console.log('🏁 Game ended')
       router.push('/')
@@ -337,9 +461,10 @@ export default function Player() {
       socket.off('round_result')
       socket.off('wrong_answer_continue')
       socket.off('timeout_continue')
+      socket.off('qcm_result')
       socket.off('game_ended')
     }
-  }, [socket, joined, playerName, playCorrect, playWrong, playTimeout, router])
+  }, [socket, joined, playerName, playCorrect, playWrong, playTimeout, router, triviaQuestion])
 
   const handleBuzz = () => {
     if (!socket) return
@@ -358,6 +483,19 @@ export default function Player() {
       // Si rien après 3 secondes, problème réseau potentiel
       console.warn('⚠️ Pas de réponse du serveur après 3s')
     }, 3000)
+  }
+
+  const handleTriviaAnswer = (optionIndex: number) => {
+    if (!socket || !triviaQuestion) return
+
+    console.log('📝 [TRIVIA] Submitting answer:', optionIndex)
+    setTriviaSelectedOption(optionIndex)
+
+    socket.emit('submit_qcm_answer', {
+      roomCode,
+      optionIndex,
+      timestamp: Date.now(),
+    })
   }
 
   // Join screen
@@ -422,7 +560,29 @@ export default function Player() {
     )
   }
 
-  // Game screen
+  // TRIVIA mode - dedicated view
+  if (gameMode === 'trivia' && gameStatus === 'trivia' && triviaQuestion) {
+    return (
+      <TriviaPlayerView
+        question={triviaQuestion.question}
+        options={triviaQuestion.options}
+        timeRemaining={triviaTimeRemaining}
+        initialTime={triviaQuestion.timeout}
+        onAnswer={handleTriviaAnswer}
+        selectedOption={triviaSelectedOption}
+        showResults={triviaMyResult !== null}
+        myResult={triviaMyResult}
+        disabled={triviaTimeRemaining <= 0}
+      />
+    )
+  }
+
+  // TRIVIA mode - waiting state
+  if (gameMode === 'trivia' && gameStatus === 'waiting') {
+    return <TriviaWaiting roundNumber={roundNumber + 1} />
+  }
+
+  // Game screen (for buzzer modes)
   return (
     <div className="min-h-screen bg-gradient-to-b from-bg-dark to-bg-medium text-text-primary flex flex-col">
       {/* Header - Score */}

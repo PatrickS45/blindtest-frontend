@@ -89,6 +89,26 @@ export interface ClientToServerEvents {
     targetPlayerId: string
   }) => void
 
+  // Trivia Actions
+  load_trivia_questions: (
+    data: {
+      roomCode: string
+      provider?: string
+      category?: string
+      difficulty?: string
+    },
+    callback?: (response: { success: boolean; questions?: any; error?: string }) => void
+  ) => void
+  get_trivia_categories: (
+    data: { provider?: string },
+    callback?: (response: { success: boolean; categories?: string[]; error?: string }) => void
+  ) => void
+  get_trivia_providers: (
+    data: {},
+    callback?: (response: { success: boolean; providers?: any[]; error?: string }) => void
+  ) => void
+  validate_qcm: (data: { roomCode: string }) => void
+
   // Host Validation
   validate_answer: (data: {
     roomCode: string
@@ -340,6 +360,36 @@ export interface ServerToClientEvents {
     winner?: Player
     winnerTeam?: Team
   }) => void
+
+  // Trivia Events
+  trivia_loaded: (data: {
+    questionCount: number
+    category?: string
+    difficulty?: string
+    provider?: string
+  }) => void
+
+  qcm_result: (data: {
+    results: Array<{
+      playerId: string
+      playerName: string
+      answer: string
+      isCorrect: boolean
+      pointsAwarded: number
+      newScore: number
+      responseTime?: number
+    }>
+    correctAnswer: string
+    correctOption: string
+    leaderboard: Player[]
+    teamLeaderboard?: Team[]
+  }) => void
+
+  countdown_tick: (data: {
+    timeRemaining: number
+  }) => void
+
+  countdown_end: () => void
 }
 
 // ==========================================

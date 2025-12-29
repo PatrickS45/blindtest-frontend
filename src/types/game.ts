@@ -13,6 +13,7 @@ export type GameMode =
   | 'questions_rafale'
   | 'chaud_devant'
   | 'tueurs_gages'
+  | 'trivia'
 
 export interface ModeConfig {
   id: GameMode
@@ -122,12 +123,13 @@ export interface Track {
 
 export interface RoundData {
   roundNumber: number
-  track: Track
+  track?: Track // Optional for trivia mode
   startedAt: Date
-  qcm?: QCMQuestion
+  qcm?: QCMQuestion | TriviaQuestion
   hints?: string[]
   bombHolder?: string // Player ID for "Chaud Devant"
   targetPlayer?: string // Player ID for "Tueurs à Gages"
+  playMode?: PlayMode
 }
 
 export interface QCMQuestion {
@@ -139,6 +141,43 @@ export interface QCMQuestion {
 export interface QCMOption {
   text: string
   isCorrect: boolean
+}
+
+// ==========================================
+// TRIVIA MODE
+// ==========================================
+
+export interface TriviaQuestion {
+  type: 'trivia'
+  question: string
+  options: TriviaOption[]
+  category?: string
+  difficulty?: string
+  source?: string
+  timeout: number // seconds
+}
+
+export interface TriviaOption {
+  text: string
+  correct: boolean
+}
+
+export interface TriviaPlayerAnswer {
+  playerId: string
+  playerName: string
+  answer: string
+  isCorrect: boolean
+  pointsAwarded: number
+  newScore: number
+  responseTime?: number
+}
+
+export interface TriviaResult {
+  results: TriviaPlayerAnswer[]
+  correctAnswer: string
+  correctOption: string
+  leaderboard: Player[]
+  teamLeaderboard?: Team[]
 }
 
 // ==========================================
@@ -193,6 +232,8 @@ export const POINTS = {
   RAFALE_BONUS_MAX: 5,
   CHAUD_PENALTY: -15,
   TUEURS_STEAL: 10,
+  TRIVIA_CORRECT: 10,
+  TRIVIA_WRONG: -3,
 } as const
 
 export const TIMERS = {
@@ -200,6 +241,8 @@ export const TIMERS = {
   WARNING_TIMEOUT: 4000,   // Warning at 4 seconds
   CHAUD_BOMB: 30000,       // 30 seconds bomb timer
   RAFALE_HINT_DELAY: 5000, // 5 seconds between hints
+  TRIVIA_TIMEOUT: 20000,   // 20 seconds for trivia questions
+  TRIVIA_WARNING: 5000,    // Warning at 5 seconds remaining
 } as const
 
 export const MAX_PLAYERS = 23 // Limited by buzzer sounds
