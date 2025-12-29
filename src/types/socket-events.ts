@@ -224,6 +224,10 @@ export interface ServerToClientEvents {
   // Buzz Events
   buzz_locked: (data: BuzzData) => void
 
+  buzz_confirmed: (data: {
+    position?: number
+  }) => void
+
   buzz_rejected: (data: {
     message: string
   }) => void
