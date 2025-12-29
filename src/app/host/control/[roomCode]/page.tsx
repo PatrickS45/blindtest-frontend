@@ -1118,7 +1118,7 @@ export default function HostControl() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <Button
-                      variant="warning"
+                      variant="secondary"
                       size="medium"
                       onClick={() => handleDetailedValidation(true, false)}
                       className="text-base"
@@ -1126,7 +1126,7 @@ export default function HostControl() {
                       ✓ Artiste seulement
                     </Button>
                     <Button
-                      variant="warning"
+                      variant="secondary"
                       size="medium"
                       onClick={() => handleDetailedValidation(false, true)}
                       className="text-base"
